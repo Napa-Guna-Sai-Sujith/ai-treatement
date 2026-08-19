@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 
-const connectionString = 'postgresql://neondb_owner:npg_yzTYoOqdX97g@ep-weathered-mud-axorkca0-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require';
+const connectionString = process.env.VITE_NEON_DATABASE_URL || 'postgresql://neondb_owner:npg_yzTYoOqdX97g@ep-weathered-mud-axorkca0-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require';
 
 async function fetchCompleteOutput() {
   const client = new Client({ connectionString });
