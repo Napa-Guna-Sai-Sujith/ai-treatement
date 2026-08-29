@@ -304,6 +304,7 @@ async function run() {
       email VARCHAR(255) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL DEFAULT '$2b$10$e8T7l.a8/H8Bv8...encrypted',
       role VARCHAR(100) NOT NULL,
+      license_number VARCHAR(100),
       is_approved BOOLEAN DEFAULT FALSE,
       last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       login_count INT DEFAULT 1
