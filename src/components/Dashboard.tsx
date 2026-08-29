@@ -19,12 +19,13 @@ import AuthModal from './AuthModal';
 type Tab = 'overview' | 'stratification' | 'genomics' | 'quantum' | 'treatment' | 'trials' | 'economics' | 'dataset' | 'aiquantum';
 
 interface DashboardProps {
-  user: { name: string; email: string; role: string } | null;
-  setUser: (user: { name: string; email: string; role: string } | null) => void;
+  user: { name: string; email: string; role: string; userType?: 'doctor' | 'patient' } | null;
+  setUser: (user: { name: string; email: string; role: string; userType?: 'doctor' | 'patient' } | null) => void;
   onOpenProfile: () => void;
+  onOpenPatientPortal?: () => void;
 }
 
-export default function Dashboard({ user, setUser, onOpenProfile }: DashboardProps) {
+export default function Dashboard({ user, setUser, onOpenProfile, onOpenPatientPortal }: DashboardProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [patients, setPatients] = useState<Patient[]>(mockPatients);
   const [stratifiedClusters, setStratifiedClusters] = useState<StratifiedCluster[]>(clusters);
@@ -132,6 +133,18 @@ export default function Dashboard({ user, setUser, onOpenProfile }: DashboardPro
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1.5" />
                 Quantum Optimizer
               </div>
+
+              {onOpenPatientPortal && (
+                <button
+                  onClick={onOpenPatientPortal}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Patient View
+                </button>
+              )}
 
               {user ? (
                 <div className="flex items-center gap-3 pl-3 border-l border-white/10">

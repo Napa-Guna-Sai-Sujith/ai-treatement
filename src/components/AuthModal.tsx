@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 
 interface AuthModalProps {
-  onLoginSuccess: (user: { name: string; email: string; role: string }) => void;
+  onLoginSuccess: (user: { name: string; email: string; role: string; userType?: 'doctor' | 'patient' }) => void;
 }
 
 export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
+  const [accountType, setAccountType] = useState<'doctor' | 'patient'>('doctor');
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +24,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
       setError('Please enter your full name');
       return;
     }
-    if (isRegister && !licenseNumber) {
+    if (isRegister && accountType === 'doctor' && !licenseNumber) {
       setError('Please enter your medical / research license number');
       return;
     }
@@ -38,6 +39,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         name: 'System Admin (Saisujith)',
         email: 'napagunasaisujith@gmail.com',
         role: 'System Administrator',
+        userType: 'doctor',
       });
       return;
     }
@@ -48,9 +50,10 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         id: Date.now(),
         name: name.trim(),
         email: email.trim(),
-        role: role,
-        licenseNumber: licenseNumber.trim(),
-        isApproved: false,
+        role: accountType === 'patient' ? 'Oncology Patient' : role,
+        licenseNumber: accountType === 'patient' ? 'PATIENT-REG' : licenseNumber.trim(),
+        userType: accountType,
+        isApproved: accountType === 'patient' ? true : false, // Auto-approve patients, require admin check for doctors
         submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       
@@ -58,9 +61,17 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
       const filtered = existing.filter((u: any) => u.email.toLowerCase() !== newUser.email.toLowerCase());
       localStorage.setItem('quantum_registered_users', JSON.stringify([newUser, ...filtered]));
 
-      console.log(`[Neon DB Sync Log]: Recorded registration for ${newUser.name} (${newUser.email}) in users table.`);
+      if (accountType === 'patient') {
+        onLoginSuccess({
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+          userType: 'patient'
+        });
+        return;
+      }
 
-      setError('Registration submitted! Account pending Administrator approval before sign in.');
+      setError('Registration submitted! Doctor account pending Administrator approval before sign in.');
       return;
     }
 
@@ -73,13 +84,15 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
       return;
     }
 
-    const userName = registeredUser?.name || name || email.split('@')[0] || 'Dr. Sarah Jenkins';
-    const userRole = registeredUser?.role || role;
+    const userName = registeredUser?.name || name || email.split('@')[0] || (accountType === 'patient' ? 'Patient User' : 'Dr. Sarah Jenkins');
+    const userRole = registeredUser?.role || (accountType === 'patient' ? 'Oncology Patient' : role);
+    const resolvedUserType = registeredUser?.userType || accountType;
 
     onLoginSuccess({
       name: userName.charAt(0).toUpperCase() + userName.slice(1),
       email: email.trim(),
-      role: userRole
+      role: userRole,
+      userType: resolvedUserType
     });
   };
 
@@ -105,6 +118,39 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
           </p>
         </div>
 
+        {/* Account Type Selection (Doctor Profile vs Patient Profile) */}
+        <div className="flex bg-slate-800/80 p-1 rounded-xl border border-white/10 mb-6">
+          <button
+            type="button"
+            onClick={() => setAccountType('doctor')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              accountType === 'doctor'
+                ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Doctor Profile
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAccountType('patient')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              accountType === 'patient'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            Patient Profile
+          </button>
+        </div>
+
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
             {error}
@@ -114,12 +160,14 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {isRegister && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Full Name</label>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                {accountType === 'patient' ? 'Patient Full Name' : 'Doctor / Specialist Name'}
+              </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Dr. Sarah Jenkins"
+                placeholder={accountType === 'patient' ? 'e.g. John Doe' : 'Dr. Sarah Jenkins'}
                 className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
               />
             </div>
