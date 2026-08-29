@@ -10,6 +10,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('Medical Oncologist');
+  const [licenseNumber, setLicenseNumber] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -20,6 +21,10 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
     }
     if (isRegister && !name) {
       setError('Please enter your full name');
+      return;
+    }
+    if (isRegister && !licenseNumber) {
+      setError('Please enter your medical / research license number');
       return;
     }
 
@@ -44,6 +49,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         name: name.trim(),
         email: email.trim(),
         role: role,
+        licenseNumber: licenseNumber.trim(),
         isApproved: false,
         submittedAt: 'Just now'
       };
@@ -141,19 +147,32 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
           </div>
 
           {isRegister && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Role / Specialty</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-              >
-                <option value="Medical Oncologist">Medical Oncologist</option>
-                <option value="Genomic Researcher">Genomic Researcher</option>
-                <option value="Clinical Trial Investigator">Clinical Trial Investigator</option>
-                <option value="Biostatistician">Biostatistician</option>
-              </select>
-            </div>
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Medical / Research License Number</label>
+                <input
+                  type="text"
+                  value={licenseNumber}
+                  onChange={(e) => setLicenseNumber(e.target.value)}
+                  placeholder="e.g. MD-892014-NY or LIC-44021"
+                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Role / Specialty</label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                >
+                  <option value="Medical Oncologist">Medical Oncologist</option>
+                  <option value="Genomic Researcher">Genomic Researcher</option>
+                  <option value="Clinical Trial Investigator">Clinical Trial Investigator</option>
+                  <option value="Biostatistician">Biostatistician</option>
+                </select>
+              </div>
+            </>
           )}
 
           <button

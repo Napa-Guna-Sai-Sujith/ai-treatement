@@ -217,6 +217,11 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-white">{u.name}</span>
                         <span className="text-xs text-indigo-400 font-medium">• {u.role}</span>
+                        {u.licenseNumber && (
+                          <span className="px-2 py-0.5 bg-slate-800 border border-white/10 text-slate-300 text-[10px] font-mono rounded">
+                            Lic: {u.licenseNumber}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs font-mono text-slate-400">{u.email}</p>
                       <p className="text-[10px] text-slate-500">Submitted: {u.submittedAt}</p>
