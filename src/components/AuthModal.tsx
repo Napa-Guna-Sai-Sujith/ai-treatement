@@ -12,6 +12,8 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('Medical Oncologist');
   const [licenseNumber, setLicenseNumber] = useState('');
+  const [hospitalPatientId, setHospitalPatientId] = useState('');
+  const [diagnosis, setDiagnosis] = useState('Non-small cell lung carcinoma (NSCLC)');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -24,8 +26,14 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
       setError('Please enter your full name');
       return;
     }
+
     if (isRegister && accountType === 'doctor' && !licenseNumber) {
-      setError('Please enter your medical / research license number');
+      setError('Please enter your Medical / Research License Number');
+      return;
+    }
+
+    if (isRegister && accountType === 'patient' && !hospitalPatientId) {
+      setError('Please enter your Hospital Patient ID (e.g. P-001 or HOSP-9921)');
       return;
     }
 
@@ -50,8 +58,10 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         id: Date.now(),
         name: name.trim(),
         email: email.trim(),
-        role: accountType === 'patient' ? 'Oncology Patient' : role,
-        licenseNumber: accountType === 'patient' ? 'PATIENT-REG' : licenseNumber.trim(),
+        role: accountType === 'patient' ? `Patient (${diagnosis})` : role,
+        licenseNumber: accountType === 'patient' ? `ID: ${hospitalPatientId.trim()}` : licenseNumber.trim(),
+        hospitalPatientId: hospitalPatientId.trim(),
+        diagnosis: diagnosis,
         userType: accountType,
         isApproved: accountType === 'patient' ? true : false, // Auto-approve patients, require admin check for doctors
         submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -197,30 +207,66 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
 
           {isRegister && (
             <>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Medical / Research License Number</label>
-                <input
-                  type="text"
-                  value={licenseNumber}
-                  onChange={(e) => setLicenseNumber(e.target.value)}
-                  placeholder="e.g. MD-892014-NY or LIC-44021"
-                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                />
-              </div>
+              {accountType === 'doctor' ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                      Medical / Research License Number
+                    </label>
+                    <input
+                      type="text"
+                      value={licenseNumber}
+                      onChange={(e) => setLicenseNumber(e.target.value)}
+                      placeholder="e.g. MD-892014-NY or LIC-44021"
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Role / Specialty</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                >
-                  <option value="Medical Oncologist">Medical Oncologist</option>
-                  <option value="Genomic Researcher">Genomic Researcher</option>
-                  <option value="Clinical Trial Investigator">Clinical Trial Investigator</option>
-                  <option value="Biostatistician">Biostatistician</option>
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Medical Role / Specialty</label>
+                    <select
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                    >
+                      <option value="Medical Oncologist">Medical Oncologist</option>
+                      <option value="Genomic Researcher">Genomic Researcher</option>
+                      <option value="Clinical Trial Investigator">Clinical Trial Investigator</option>
+                      <option value="Biostatistician">Biostatistician</option>
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                      Hospital Patient ID Number
+                    </label>
+                    <input
+                      type="text"
+                      value={hospitalPatientId}
+                      onChange={(e) => setHospitalPatientId(e.target.value)}
+                      placeholder="e.g. P-001 or HOSP-9920"
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/30 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Primary Oncology Diagnosis</label>
+                    <select
+                      value={diagnosis}
+                      onChange={(e) => setDiagnosis(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                    >
+                      <option value="Non-small cell lung carcinoma (NSCLC)">Non-small cell lung carcinoma (NSCLC)</option>
+                      <option value="HER2+ Breast Cancer Stage II">HER2+ Breast Cancer Stage II</option>
+                      <option value="Metastatic Castration-Resistant Prostate Cancer">Metastatic Castration-Resistant Prostate Cancer</option>
+                      <option value="Acute Lymphoblastic Leukemia (ALL)">Acute Lymphoblastic Leukemia (ALL)</option>
+                      <option value="Colorectal Cancer Stage IV">Colorectal Cancer Stage IV</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </>
           )}
 
