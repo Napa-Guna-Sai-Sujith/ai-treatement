@@ -39,16 +39,40 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
 
     // New Registration pending approval check
     if (isRegister) {
+      const newUser = {
+        id: Date.now(),
+        name: name.trim(),
+        email: email.trim(),
+        role: role,
+        isApproved: false,
+        submittedAt: 'Just now'
+      };
+      
+      const existing = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
+      // Filter out duplicate email if re-registering
+      const filtered = existing.filter((u: any) => u.email.toLowerCase() !== newUser.email.toLowerCase());
+      localStorage.setItem('quantum_registered_users', JSON.stringify([newUser, ...filtered]));
+
       setError('Registration submitted! Account pending Administrator approval before sign in.');
       return;
     }
 
-    // Regular User Login
-    const userName = name || email.split('@')[0] || 'Dr. Sarah Jenkins';
+    // Regular User Login - Check approval status
+    const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
+    const registeredUser = saved.find((u: any) => u.email.toLowerCase() === email.toLowerCase().trim());
+
+    if (registeredUser && !registeredUser.isApproved) {
+      setError('Your account is currently pending Administrator approval. Please wait for Admin authorization.');
+      return;
+    }
+
+    const userName = registeredUser?.name || name || email.split('@')[0] || 'Dr. Sarah Jenkins';
+    const userRole = registeredUser?.role || role;
+
     onLoginSuccess({
       name: userName.charAt(0).toUpperCase() + userName.slice(1),
-      email,
-      role
+      email: email.trim(),
+      role: userRole
     });
   };
 

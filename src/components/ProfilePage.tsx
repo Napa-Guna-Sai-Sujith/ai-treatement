@@ -20,11 +20,33 @@ interface Props {
 export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: Props) {
   const isAdmin = user?.email?.toLowerCase().trim() === 'napagunasaisujith@gmail.com';
 
-  const [pendingUsers, setPendingUsers] = useState([
+  const defaultUsers = [
     { id: 2, name: 'Dr. Alex Vance', email: 'a.vance@precisionmed.io', role: 'Genomic Researcher', isApproved: false, submittedAt: '10 mins ago' },
     { id: 3, name: 'Elena Rostova', email: 'e.rostova@trials.net', role: 'Clinical Trial Investigator', isApproved: false, submittedAt: '35 mins ago' },
     { id: 4, name: 'Dr. Marcus Vance', email: 'm.vance@hospital.org', role: 'Medical Oncologist', isApproved: false, submittedAt: '2 hours ago' },
-  ]);
+  ];
+
+  const loadAllUsers = () => {
+    const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
+    // Combine saved new registrations with default users (filtering out duplicates by email)
+    const combined = [...saved];
+    for (const du of defaultUsers) {
+      if (!combined.some(u => u.email.toLowerCase() === du.email.toLowerCase())) {
+        combined.push(du);
+      }
+    }
+    return combined;
+  };
+
+  const [pendingUsers, setPendingUsers] = useState(loadAllUsers);
+
+  // Auto updation effect to dynamically reflect new registrations in real time
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setPendingUsers(loadAllUsers());
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [profile, setProfile] = useState<UserProfile>({
     name: user?.name || (isAdmin ? 'System Admin (Saisujith)' : 'Dr. Sarah Jenkins'),
@@ -42,12 +64,20 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
 
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
+  const saveUsersToStorage = (updatedList: any[]) => {
+    setPendingUsers(updatedList);
+    const saved = updatedList.filter(u => !defaultUsers.some(du => du.id === u.id));
+    localStorage.setItem('quantum_registered_users', JSON.stringify(saved));
+  };
+
   const toggleUserApproval = (id: number) => {
-    setPendingUsers(prev => prev.map(u => u.id === id ? { ...u, isApproved: !u.isApproved } : u));
+    const updated = pendingUsers.map(u => u.id === id ? { ...u, isApproved: !u.isApproved } : u);
+    saveUsersToStorage(updated);
   };
 
   const updateUserData = (id: number, data: Partial<{ name: string; email: string; role: string }>) => {
-    setPendingUsers(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));
+    const updated = pendingUsers.map(u => u.id === id ? { ...u, ...data } : u);
+    saveUsersToStorage(updated);
   };
 
   const handleSave = (e: React.FormEvent) => {
