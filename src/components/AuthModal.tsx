@@ -6,39 +6,59 @@ interface AuthModalProps {
 
 export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
   const [accountType, setAccountType] = useState<'doctor' | 'patient'>('doctor');
+  const [loginMode, setLoginMode] = useState<'docId' | 'email'>('docId'); // Default: Doctor ID Login
   const [isRegister, setIsRegister] = useState(false);
+
+  // Common credentials
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+
+  // Doctor Specific Details
+  const [docId, setDocId] = useState('DOC-992014');
+  const [govtLicenseId, setGovtLicenseId] = useState('GOVT-LIC-892014-NY');
+  const [degree, setDegree] = useState('MD, DM (Medical Oncology)');
+  const [experienceYears, setExperienceYears] = useState('12');
+  const [docHospitalName, setDocHospitalName] = useState('Memorial Precision Cancer Center');
   const [role, setRole] = useState('Medical Oncologist');
-  const [licenseNumber, setLicenseNumber] = useState('');
+
+  // Patient Specific Details
   const [hospitalPatientId, setHospitalPatientId] = useState('');
+  const [patientHospitalName, setPatientHospitalName] = useState('Memorial Precision Cancer Center');
   const [diagnosis, setDiagnosis] = useState('Non-small cell lung carcinoma (NSCLC)');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please fill in all required fields');
-      return;
-    }
-    if (isRegister && !name) {
-      setError('Please enter your full name');
-      return;
+    setError('');
+
+    // Doctor ID login default check
+    if (!isRegister && accountType === 'doctor' && loginMode === 'docId') {
+      if (!docId || !password) {
+        setError('Please enter your Doctor ID Number and Password');
+        return;
+      }
+      // Demo validation for Admin or Doctor ID
+      if (docId.trim().toUpperCase() === 'DOC-ADMIN' || docId.trim().toUpperCase() === 'DOC-992014') {
+        onLoginSuccess({
+          name: docId.trim().toUpperCase() === 'DOC-ADMIN' ? 'System Admin (Saisujith)' : 'Dr. Sarah Jenkins',
+          email: docId.trim().toUpperCase() === 'DOC-ADMIN' ? 'napagunasaisujith@gmail.com' : 's.jenkins@oncology.org',
+          role: docId.trim().toUpperCase() === 'DOC-ADMIN' ? 'System Administrator' : 'Medical Oncologist',
+          userType: 'doctor'
+        });
+        return;
+      }
     }
 
-    if (isRegister && accountType === 'doctor' && !licenseNumber) {
-      setError('Please enter your Medical / Research License Number');
-      return;
+    if (!isRegister && loginMode === 'email') {
+      if (!email || !password) {
+        setError('Please fill in Email Address and Password');
+        return;
+      }
     }
 
-    if (isRegister && accountType === 'patient' && !hospitalPatientId) {
-      setError('Please enter your Hospital Patient ID (e.g. P-001 or HOSP-9921)');
-      return;
-    }
-
-    // Check for Admin Credentials
-    if (email.toLowerCase().trim() === 'napagunasaisujith@gmail.com') {
+    // Check for Admin Credentials via Email
+    if (loginMode === 'email' && email.toLowerCase().trim() === 'napagunasaisujith@gmail.com') {
       if (password !== '123456') {
         setError('Invalid password for Admin account');
         return;
@@ -52,21 +72,54 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
       return;
     }
 
-    // New Registration pending approval check
     if (isRegister) {
+      if (!name) {
+        setError('Please enter your full name');
+        return;
+      }
+
+      if (accountType === 'doctor') {
+        if (!govtLicenseId) {
+          setError('Government License ID is mandatory for Doctor registration');
+          return;
+        }
+        if (!docHospitalName) {
+          setError('Please specify your Hospital / Medical Institute name');
+          return;
+        }
+      }
+
+      if (accountType === 'patient') {
+        if (!hospitalPatientId) {
+          setError('Please enter your Hospital Patient ID (e.g. P-001 or HOSP-9920)');
+          return;
+        }
+        if (!patientHospitalName) {
+          setError('Please enter your Hospital Name');
+          return;
+        }
+      }
+
+      const generatedDocId = `DOC-${Math.floor(100000 + Math.random() * 900000)}`;
+
       const newUser = {
         id: Date.now(),
         name: name.trim(),
-        email: email.trim(),
+        email: email.trim() || `${name.toLowerCase().replace(/\s+/g, '')}@hospital.org`,
+        docId: accountType === 'doctor' ? generatedDocId : undefined,
+        govtLicenseId: accountType === 'doctor' ? govtLicenseId.trim() : undefined,
+        degree: accountType === 'doctor' ? degree.trim() : undefined,
+        experienceYears: accountType === 'doctor' ? experienceYears : undefined,
+        hospitalName: accountType === 'doctor' ? docHospitalName.trim() : patientHospitalName.trim(),
         role: accountType === 'patient' ? `Patient (${diagnosis})` : role,
-        licenseNumber: accountType === 'patient' ? `ID: ${hospitalPatientId.trim()}` : licenseNumber.trim(),
+        licenseNumber: accountType === 'doctor' ? govtLicenseId.trim() : `ID: ${hospitalPatientId.trim()}`,
         hospitalPatientId: hospitalPatientId.trim(),
         diagnosis: diagnosis,
         userType: accountType,
-        isApproved: accountType === 'patient' ? true : false, // Auto-approve patients, require admin check for doctors
+        isApproved: accountType === 'patient' ? true : false,
         submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      
+
       const existing = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
       const filtered = existing.filter((u: any) => u.email.toLowerCase() !== newUser.email.toLowerCase());
       localStorage.setItem('quantum_registered_users', JSON.stringify([newUser, ...filtered]));
@@ -81,26 +134,30 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         return;
       }
 
-      setError('Registration submitted! Doctor account pending Administrator approval before sign in.');
+      setError(`Registration submitted! Assigned Doctor ID: ${generatedDocId}. Pending Administrator approval before sign in.`);
       return;
     }
 
     // Regular User Login - Check approval status
     const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
-    const registeredUser = saved.find((u: any) => u.email.toLowerCase() === email.toLowerCase().trim());
+    const registeredUser = saved.find((u: any) => 
+      loginMode === 'docId' 
+        ? u.docId?.toUpperCase() === docId.trim().toUpperCase() 
+        : u.email?.toLowerCase() === email.toLowerCase().trim()
+    );
 
     if (registeredUser && !registeredUser.isApproved) {
       setError('Your account is currently pending Administrator approval. Please wait for Admin authorization.');
       return;
     }
 
-    const userName = registeredUser?.name || name || email.split('@')[0] || (accountType === 'patient' ? 'Patient User' : 'Dr. Sarah Jenkins');
+    const userName = registeredUser?.name || name || (accountType === 'patient' ? 'Patient User' : 'Dr. Sarah Jenkins');
     const userRole = registeredUser?.role || (accountType === 'patient' ? 'Oncology Patient' : role);
     const resolvedUserType = registeredUser?.userType || accountType;
 
     onLoginSuccess({
       name: userName.charAt(0).toUpperCase() + userName.slice(1),
-      email: email.trim(),
+      email: registeredUser?.email || email.trim() || 'user@oncology.org',
       role: userRole,
       userType: resolvedUserType
     });
@@ -161,6 +218,40 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
           </button>
         </div>
 
+        {/* Sign In Mode Switch (Doctor ID vs Mail Login) */}
+        {!isRegister && (
+          <div className="flex bg-slate-900 border border-white/10 rounded-xl p-1 mb-5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setLoginMode('docId')}
+              className={`flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                loginMode === 'docId'
+                  ? 'bg-indigo-600 text-white font-bold shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002 2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3 3 0 00-3 3h6a3 3 0 00-3-3z" />
+              </svg>
+              Doctor ID Login (Default)
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMode('email')}
+              className={`flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                loginMode === 'email'
+                  ? 'bg-purple-600 text-white font-bold shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Mail Address Login
+            </button>
+          </div>
+        )}
+
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
             {error}
@@ -168,58 +259,135 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isRegister && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                {accountType === 'patient' ? 'Patient Full Name' : 'Doctor / Specialist Name'}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={accountType === 'patient' ? 'e.g. John Doe' : 'Dr. Sarah Jenkins'}
-                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-              />
-            </div>
+          {/* Sign In Inputs */}
+          {!isRegister && (
+            <>
+              {loginMode === 'docId' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                    Doctor ID Number (Default: DOC-992014)
+                  </label>
+                  <input
+                    type="text"
+                    value={docId}
+                    onChange={(e) => setDocId(e.target.value)}
+                    placeholder="DOC-992014 or DOC-ADMIN"
+                    className="w-full px-4 py-2.5 bg-slate-800/60 border border-indigo-500/40 rounded-xl text-white font-mono text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="oncologist@hospital.org"
+                    className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+            </>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="oncologist@hospital.org"
-              className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-            />
-          </div>
-
+          {/* Registration Form Inputs */}
           {isRegister && (
             <>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                  {accountType === 'patient' ? 'Patient Full Name' : 'Doctor / Specialist Full Name'}
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={accountType === 'patient' ? 'e.g. John Doe' : 'Dr. Sarah Jenkins'}
+                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="oncologist@hospital.org"
+                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+              </div>
+
               {accountType === 'doctor' ? (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                      Medical / Research License Number
+                    <label className="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">
+                      ★ Govt License ID (Mandatory)
                     </label>
                     <input
                       type="text"
-                      value={licenseNumber}
-                      onChange={(e) => setLicenseNumber(e.target.value)}
-                      placeholder="e.g. MD-892014-NY or LIC-44021"
-                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                      value={govtLicenseId}
+                      onChange={(e) => setGovtLicenseId(e.target.value)}
+                      placeholder="e.g. GOVT-LIC-892014-NY"
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-amber-500/40 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                      Hospital / Cancer Center Name
+                    </label>
+                    <input
+                      type="text"
+                      value={docHospitalName}
+                      onChange={(e) => setDocHospitalName(e.target.value)}
+                      placeholder="e.g. Memorial Precision Cancer Center"
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Degree / Course Completed</label>
+                      <input
+                        type="text"
+                        value={degree}
+                        onChange={(e) => setDegree(e.target.value)}
+                        placeholder="e.g. MD, DM Oncology"
+                        className="w-full px-3 py-2 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Experience (Years)</label>
+                      <input
+                        type="number"
+                        value={experienceYears}
+                        onChange={(e) => setExperienceYears(e.target.value)}
+                        placeholder="12"
+                        className="w-full px-3 py-2 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -227,7 +395,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
                     <select
                       value={role}
                       onChange={(e) => setRole(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                     >
                       <option value="Medical Oncologist">Medical Oncologist</option>
                       <option value="Genomic Researcher">Genomic Researcher</option>
@@ -252,11 +420,24 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
                   </div>
 
                   <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                      Hospital Name
+                    </label>
+                    <input
+                      type="text"
+                      value={patientHospitalName}
+                      onChange={(e) => setPatientHospitalName(e.target.value)}
+                      placeholder="e.g. Memorial Precision Cancer Center"
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/30 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
                     <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Primary Oncology Diagnosis</label>
                     <select
                       value={diagnosis}
                       onChange={(e) => setDiagnosis(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/30 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
                     >
                       <option value="Non-small cell lung carcinoma (NSCLC)">Non-small cell lung carcinoma (NSCLC)</option>
                       <option value="HER2+ Breast Cancer Stage II">HER2+ Breast Cancer Stage II</option>
