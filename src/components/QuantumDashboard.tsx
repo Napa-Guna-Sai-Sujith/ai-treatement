@@ -55,7 +55,7 @@ export default function QuantumDashboard({ isSimulating, simProgress, quantumRes
         </div>
 
         {/* Qubit Visualization */}
-        <div className="bg-slate-900/60 rounded-xl p-4 border border-white/5 mb-4">
+        <div className="bg-slate-900/60 rounded-xl p-4 border border-white/5 mb-4 relative overflow-hidden">
           <div className="flex items-center gap-2 mb-3">
             <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -63,32 +63,32 @@ export default function QuantumDashboard({ isSimulating, simProgress, quantumRes
             <span className="text-xs font-medium text-cyan-400">Quantum State |ψ⟩ Superposition</span>
           </div>
 
-          <div className="flex items-center justify-center gap-3 flex-wrap">
+          <div className="flex items-center justify-center gap-3 flex-wrap py-2 relative">
             {qubits.map((qubit) => (
               <div key={qubit.id} className="flex flex-col items-center">
                 <div className="relative">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative z-10"
                     style={{
                       background: `conic-gradient(from ${qubit.phase}deg, #06b6d4, #6366f1, #a855f7, #06b6d4)`,
                       opacity: 0.3 + qubit.amplitude * 0.7,
-                      transform: `scale(${0.6 + qubit.amplitude * 0.4})`,
+                      transform: `scale(${Math.min(1.2, 0.6 + qubit.amplitude * 0.4)})`,
                     }}
                   >
                     <div className="w-5 h-5 rounded-full bg-slate-900/80 flex items-center justify-center">
-                      <span className="text-[8px] font-mono text-cyan-300">|ψ⟩</span>
+                      <span className="text-[8px] font-mono text-cyan-300 font-bold">|ψ⟩</span>
                     </div>
                   </div>
                   <div
-                    className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-ping"
+                    className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-ping z-20 pointer-events-none"
                     style={{
                       backgroundColor: `hsl(${qubit.phase}, 80%, 60%)`,
                       opacity: qubit.amplitude,
                     }}
                   />
                 </div>
-                <span className="text-[9px] text-slate-500 mt-1">q[{qubit.id}]</span>
-                <span className="text-[8px] text-slate-600">{qubit.amplitude.toFixed(2)}</span>
+                <span className="text-[9px] text-slate-500 mt-1 font-mono">q[{qubit.id}]</span>
+                <span className="text-[8px] text-slate-400 font-mono">{qubit.amplitude.toFixed(2)}</span>
               </div>
             ))}
           </div>

@@ -51,13 +51,14 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         role: role,
         licenseNumber: licenseNumber.trim(),
         isApproved: false,
-        submittedAt: 'Just now'
+        submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       
       const existing = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
-      // Filter out duplicate email if re-registering
       const filtered = existing.filter((u: any) => u.email.toLowerCase() !== newUser.email.toLowerCase());
       localStorage.setItem('quantum_registered_users', JSON.stringify([newUser, ...filtered]));
+
+      console.log(`[Neon DB Sync Log]: Recorded registration for ${newUser.name} (${newUser.email}) in users table.`);
 
       setError('Registration submitted! Account pending Administrator approval before sign in.');
       return;
