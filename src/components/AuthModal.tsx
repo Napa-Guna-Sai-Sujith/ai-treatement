@@ -6,7 +6,6 @@ interface AuthModalProps {
 
 export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
   const [accountType, setAccountType] = useState<'doctor' | 'patient'>('doctor');
-  const [loginMode, setLoginMode] = useState<'docId' | 'email'>('docId'); // Default: Doctor ID Login
   const [isRegister, setIsRegister] = useState(false);
 
   // Common credentials
@@ -23,6 +22,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
   const [role, setRole] = useState('Medical Oncologist');
 
   // Patient Specific Details
+  const [patientLoginId, setPatientLoginId] = useState('P-001');
   const [hospitalPatientId, setHospitalPatientId] = useState('');
   const [patientHospitalName, setPatientHospitalName] = useState('Memorial Precision Cancer Center');
   const [diagnosis, setDiagnosis] = useState('Non-small cell lung carcinoma (NSCLC)');
@@ -32,42 +32,96 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
     e.preventDefault();
     setError('');
 
-    // Doctor ID login default check
-    if (!isRegister && accountType === 'doctor' && loginMode === 'docId') {
+    // Mandatory Doctor ID login check for Doctors
+    if (!isRegister && accountType === 'doctor') {
       if (!docId || !password) {
-        setError('Please enter your Doctor ID Number and Password');
+        setError('Doctor ID Number and Password are required to sign in');
         return;
       }
-      // Demo validation for Admin or Doctor ID
-      if (docId.trim().toUpperCase() === 'DOC-ADMIN' || docId.trim().toUpperCase() === 'DOC-992014') {
+
+      // Check for Admin Doctor ID or Admin email mapped to doc id
+      if (docId.trim().toUpperCase() === 'DOC-ADMIN' || docId.trim().toLowerCase() === 'napagunasaisujith@gmail.com') {
+        if (password !== '123456') {
+          setError('Invalid password for Administrator account');
+          return;
+        }
         onLoginSuccess({
-          name: docId.trim().toUpperCase() === 'DOC-ADMIN' ? 'System Admin (Saisujith)' : 'Dr. Sarah Jenkins',
-          email: docId.trim().toUpperCase() === 'DOC-ADMIN' ? 'napagunasaisujith@gmail.com' : 's.jenkins@oncology.org',
-          role: docId.trim().toUpperCase() === 'DOC-ADMIN' ? 'System Administrator' : 'Medical Oncologist',
+          name: 'System Admin (Saisujith)',
+          email: 'napagunasaisujith@gmail.com',
+          role: 'System Administrator',
           userType: 'doctor'
         });
         return;
       }
-    }
 
-    if (!isRegister && loginMode === 'email') {
-      if (!email || !password) {
-        setError('Please fill in Email Address and Password');
+      // Default demo doctor ID
+      if (docId.trim().toUpperCase() === 'DOC-992014') {
+        if (password !== '123456') {
+          setError('Invalid password for Doctor ID DOC-992014');
+          return;
+        }
+        onLoginSuccess({
+          name: 'Dr. Sarah Jenkins',
+          email: 's.jenkins@oncology.org',
+          role: 'Medical Oncologist',
+          userType: 'doctor'
+        });
         return;
       }
-    }
 
-    // Check for Admin Credentials via Email
-    if (loginMode === 'email' && email.toLowerCase().trim() === 'napagunasaisujith@gmail.com') {
-      if (password !== '123456') {
-        setError('Invalid password for Admin account');
+      // Check registered users for matching docId or govtLicenseId
+      const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
+      const registeredUser = saved.find((u: any) => 
+        u.userType === 'doctor' && (
+          u.docId?.toUpperCase() === docId.trim().toUpperCase() ||
+          u.govtLicenseId?.toUpperCase() === docId.trim().toUpperCase() ||
+          u.licenseNumber?.toUpperCase() === docId.trim().toUpperCase()
+        )
+      );
+
+      if (!registeredUser) {
+        setError('Doctor ID not found. Please verify your assigned Doctor ID or register a new account.');
         return;
       }
+
+      if (!registeredUser.isApproved) {
+        setError('Your Doctor account is pending Administrator approval. Please wait for Admin authorization.');
+        return;
+      }
+
       onLoginSuccess({
-        name: 'System Admin (Saisujith)',
-        email: 'napagunasaisujith@gmail.com',
-        role: 'System Administrator',
-        userType: 'doctor',
+        name: registeredUser.name,
+        email: registeredUser.email || `${registeredUser.name.toLowerCase().replace(/\s+/g, '')}@hospital.org`,
+        role: registeredUser.role || 'Medical Oncologist',
+        userType: 'doctor'
+      });
+      return;
+    }
+
+    // Patient login
+    if (!isRegister && accountType === 'patient') {
+      if (!patientLoginId || !password) {
+        setError('Hospital Patient ID or Email is required to sign in');
+        return;
+      }
+
+      const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
+      const registeredUser = saved.find((u: any) => 
+        u.userType === 'patient' && (
+          u.hospitalPatientId?.toUpperCase() === patientLoginId.trim().toUpperCase() ||
+          u.email?.toLowerCase() === patientLoginId.trim().toLowerCase() ||
+          patientLoginId.trim().toUpperCase() === 'P-001'
+        )
+      );
+
+      const patientName = registeredUser?.name || 'Patient User';
+      const patientRole = registeredUser?.role || 'Oncology Patient';
+
+      onLoginSuccess({
+        name: patientName,
+        email: registeredUser?.email || `${patientLoginId.toLowerCase()}@hospital.org`,
+        role: patientRole,
+        userType: 'patient'
       });
       return;
     }
@@ -137,30 +191,6 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
       setError(`Registration submitted! Assigned Doctor ID: ${generatedDocId}. Pending Administrator approval before sign in.`);
       return;
     }
-
-    // Regular User Login - Check approval status
-    const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
-    const registeredUser = saved.find((u: any) => 
-      loginMode === 'docId' 
-        ? u.docId?.toUpperCase() === docId.trim().toUpperCase() 
-        : u.email?.toLowerCase() === email.toLowerCase().trim()
-    );
-
-    if (registeredUser && !registeredUser.isApproved) {
-      setError('Your account is currently pending Administrator approval. Please wait for Admin authorization.');
-      return;
-    }
-
-    const userName = registeredUser?.name || name || (accountType === 'patient' ? 'Patient User' : 'Dr. Sarah Jenkins');
-    const userRole = registeredUser?.role || (accountType === 'patient' ? 'Oncology Patient' : role);
-    const resolvedUserType = registeredUser?.userType || accountType;
-
-    onLoginSuccess({
-      name: userName.charAt(0).toUpperCase() + userName.slice(1),
-      email: registeredUser?.email || email.trim() || 'user@oncology.org',
-      role: userRole,
-      userType: resolvedUserType
-    });
   };
 
   return (
@@ -218,40 +248,6 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
           </button>
         </div>
 
-        {/* Sign In Mode Switch (Doctor ID vs Mail Login) */}
-        {!isRegister && (
-          <div className="flex bg-slate-900 border border-white/10 rounded-xl p-1 mb-5 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setLoginMode('docId')}
-              className={`flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                loginMode === 'docId'
-                  ? 'bg-indigo-600 text-white font-bold shadow'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002 2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3 3 0 00-3 3h6a3 3 0 00-3-3z" />
-              </svg>
-              Doctor ID Login (Default)
-            </button>
-            <button
-              type="button"
-              onClick={() => setLoginMode('email')}
-              className={`flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                loginMode === 'email'
-                  ? 'bg-purple-600 text-white font-bold shadow'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              Mail Address Login
-            </button>
-          </div>
-        )}
-
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
             {error}
@@ -262,28 +258,39 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
           {/* Sign In Inputs */}
           {!isRegister && (
             <>
-              {loginMode === 'docId' ? (
+              {accountType === 'doctor' ? (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                    Doctor ID Number (Default: DOC-992014)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Doctor ID Number <span className="text-amber-400 font-bold">*Mandatory</span>
+                    </label>
+                    <span className="text-[10px] text-indigo-400 font-mono">Demo: DOC-992014 or DOC-ADMIN</span>
+                  </div>
                   <input
                     type="text"
                     value={docId}
                     onChange={(e) => setDocId(e.target.value)}
-                    placeholder="DOC-992014 or DOC-ADMIN"
+                    placeholder="Enter your assigned Doctor ID (e.g. DOC-992014)"
                     className="w-full px-4 py-2.5 bg-slate-800/60 border border-indigo-500/40 rounded-xl text-white font-mono text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Doctor portal access strictly requires validation via institutional Doctor ID.
+                  </p>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Email Address</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Hospital Patient ID Number / Email
+                    </label>
+                    <span className="text-[10px] text-emerald-400 font-mono">Demo: P-001</span>
+                  </div>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="oncologist@hospital.org"
-                    className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                    type="text"
+                    value={patientLoginId}
+                    onChange={(e) => setPatientLoginId(e.target.value)}
+                    placeholder="Enter Patient ID (e.g. P-001 or email)"
+                    className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/40 rounded-xl text-white font-mono text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
                   />
                 </div>
               )}
