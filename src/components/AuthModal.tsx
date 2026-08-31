@@ -14,7 +14,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
   const [name, setName] = useState('');
 
   // Doctor Specific Details
-  const [docId, setDocId] = useState('DOC-992014');
+  const [docId, setDocId] = useState('');
   const [govtLicenseId, setGovtLicenseId] = useState('GOVT-LIC-892014-NY');
   const [degree, setDegree] = useState('MD, DM (Medical Oncology)');
   const [experienceYears, setExperienceYears] = useState('12');
@@ -22,7 +22,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
   const [role, setRole] = useState('Medical Oncologist');
 
   // Patient Specific Details
-  const [patientLoginId, setPatientLoginId] = useState('P-001');
+  const [patientLoginId, setPatientLoginId] = useState('');
   const [hospitalPatientId, setHospitalPatientId] = useState('');
   const [patientHospitalName, setPatientHospitalName] = useState('Memorial Precision Cancer Center');
   const [diagnosis, setDiagnosis] = useState('Non-small cell lung carcinoma (NSCLC)');
@@ -260,36 +260,27 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
             <>
               {accountType === 'doctor' ? (
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Doctor ID Number <span className="text-amber-400 font-bold">*Mandatory</span>
-                    </label>
-                    <span className="text-[10px] text-indigo-400 font-mono">Demo: DOC-992014 or DOC-ADMIN</span>
-                  </div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                    Doctor ID Number
+                  </label>
                   <input
                     type="text"
                     value={docId}
                     onChange={(e) => setDocId(e.target.value)}
-                    placeholder="Enter your assigned Doctor ID (e.g. DOC-992014)"
+                    placeholder="Enter your Doctor ID"
                     className="w-full px-4 py-2.5 bg-slate-800/60 border border-indigo-500/40 rounded-xl text-white font-mono text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Doctor portal access strictly requires validation via institutional Doctor ID.
-                  </p>
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Hospital Patient ID Number / Email
-                    </label>
-                    <span className="text-[10px] text-emerald-400 font-mono">Demo: P-001</span>
-                  </div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                    Hospital Patient ID Number / Email
+                  </label>
                   <input
                     type="text"
                     value={patientLoginId}
                     onChange={(e) => setPatientLoginId(e.target.value)}
-                    placeholder="Enter Patient ID (e.g. P-001 or email)"
+                    placeholder="Enter Patient ID or Email"
                     className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/40 rounded-xl text-white font-mono text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
                   />
                 </div>
