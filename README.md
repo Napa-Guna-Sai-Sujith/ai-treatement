@@ -4,8 +4,16 @@
 [![React](https://img.shields.io/badge/React-19.2-blue)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
 [![Database](https://img.shields.io/badge/Database-Neon_PostgreSQL-brightgreen)](https://neon.tech/)
+[![Deploy with Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)](https://ai-treatement.vercel.app)
 
 **QuantumCare AI** is an advanced enterprise-grade precision oncology dashboard that integrates artificial intelligence stratification with Variational Quantum Eigensolver (VQE) and QAOA quantum computing algorithms to generate personalized cancer treatment recommendations.
+
+---
+
+## 🌐 Live Application Link
+
+- 🚀 **Live Demo on Vercel**: **`https://ai-treatement.vercel.app`**
+- 📦 **GitHub Repository**: **[https://github.com/Napa-Guna-Sai-Sujith/ai-treatement](https://github.com/Napa-Guna-Sai-Sujith/ai-treatement)**
 
 ---
 

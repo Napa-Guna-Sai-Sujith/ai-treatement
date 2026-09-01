@@ -214,26 +214,16 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-white">{u.name}</span>
                         <span className="text-xs text-indigo-400 font-medium">• {u.role}</span>
-                        {(u as any).docId && (
-                          <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] font-mono font-bold rounded">
-                            {(u as any).docId}
-                          </span>
-                        )}
-                        {(u as any).govtLicenseId && (
-                          <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono rounded">
-                            Govt Lic: {(u as any).govtLicenseId}
+                        {u.licenseNumber && (
+                          <span className="px-2 py-0.5 bg-slate-800 border border-white/10 text-slate-300 text-[10px] font-mono rounded">
+                            Lic: {u.licenseNumber}
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                        <span>Email: <strong className="text-slate-300 font-mono">{u.email}</strong></span>
-                        {(u as any).hospitalName && <span>Hospital: <strong className="text-slate-300">{(u as any).hospitalName}</strong></span>}
-                        {(u as any).degree && <span>Degree: <strong className="text-slate-300">{(u as any).degree}</strong></span>}
-                        {(u as any).experienceYears && <span>Exp: <strong className="text-indigo-400">{(u as any).experienceYears} Years</strong></span>}
-                      </div>
+                      <p className="text-xs font-mono text-slate-400">{u.email}</p>
                       <p className="text-[10px] text-slate-500">Submitted: {u.submittedAt}</p>
                     </div>
 
