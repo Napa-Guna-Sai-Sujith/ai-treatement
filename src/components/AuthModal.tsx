@@ -23,9 +23,6 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
 
   // Patient Specific Details
   const [patientLoginId, setPatientLoginId] = useState('');
-  const [hospitalPatientId, setHospitalPatientId] = useState('');
-  const [patientHospitalName, setPatientHospitalName] = useState('Memorial Precision Cancer Center');
-  const [diagnosis, setDiagnosis] = useState('Non-small cell lung carcinoma (NSCLC)');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -143,17 +140,6 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         }
       }
 
-      if (accountType === 'patient') {
-        if (!hospitalPatientId) {
-          setError('Please enter your Hospital Patient ID (e.g. P-001 or HOSP-9920)');
-          return;
-        }
-        if (!patientHospitalName) {
-          setError('Please enter your Hospital Name');
-          return;
-        }
-      }
-
       const generatedDocId = `DOC-${Math.floor(100000 + Math.random() * 900000)}`;
 
       const newUser = {
@@ -164,11 +150,9 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         govtLicenseId: accountType === 'doctor' ? govtLicenseId.trim() : undefined,
         degree: accountType === 'doctor' ? degree.trim() : undefined,
         experienceYears: accountType === 'doctor' ? experienceYears : undefined,
-        hospitalName: accountType === 'doctor' ? docHospitalName.trim() : patientHospitalName.trim(),
-        role: accountType === 'patient' ? `Patient (${diagnosis})` : role,
-        licenseNumber: accountType === 'doctor' ? govtLicenseId.trim() : `ID: ${hospitalPatientId.trim()}`,
-        hospitalPatientId: hospitalPatientId.trim(),
-        diagnosis: diagnosis,
+        hospitalName: accountType === 'doctor' ? docHospitalName.trim() : undefined,
+        role: accountType === 'patient' ? 'Oncology Patient' : role,
+        licenseNumber: accountType === 'doctor' ? govtLicenseId.trim() : undefined,
         userType: accountType,
         isApproved: accountType === 'patient' ? true : false,
         submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -402,50 +386,7 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
                     </select>
                   </div>
                 </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                      Hospital Patient ID Number
-                    </label>
-                    <input
-                      type="text"
-                      value={hospitalPatientId}
-                      onChange={(e) => setHospitalPatientId(e.target.value)}
-                      placeholder="e.g. P-001 or HOSP-9920"
-                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/30 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                      Hospital Name
-                    </label>
-                    <input
-                      type="text"
-                      value={patientHospitalName}
-                      onChange={(e) => setPatientHospitalName(e.target.value)}
-                      placeholder="e.g. Memorial Precision Cancer Center"
-                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/30 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Primary Oncology Diagnosis</label>
-                    <select
-                      value={diagnosis}
-                      onChange={(e) => setDiagnosis(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-slate-800/60 border border-emerald-500/30 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-                    >
-                      <option value="Non-small cell lung carcinoma (NSCLC)">Non-small cell lung carcinoma (NSCLC)</option>
-                      <option value="HER2+ Breast Cancer Stage II">HER2+ Breast Cancer Stage II</option>
-                      <option value="Metastatic Castration-Resistant Prostate Cancer">Metastatic Castration-Resistant Prostate Cancer</option>
-                      <option value="Acute Lymphoblastic Leukemia (ALL)">Acute Lymphoblastic Leukemia (ALL)</option>
-                      <option value="Colorectal Cancer Stage IV">Colorectal Cancer Stage IV</option>
-                    </select>
-                  </div>
-                </>
-              )}
+              ) : null}
             </>
           )}
 
