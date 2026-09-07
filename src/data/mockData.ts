@@ -3,6 +3,8 @@ import { Patient, TreatmentOption, StratifiedCluster } from '../types';
 export const mockPatients: Patient[] = [
   {
     id: 'P-001',
+    name: 'Robert Davis',
+    email: 'r.davis@medcare.org',
     age: 58,
     gender: 'Male',
     diagnosis: 'Non-small cell lung carcinoma (NSCLC) Stage IIIB',
@@ -16,6 +18,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-002',
+    name: 'Maria Garcia',
+    email: 'm.garcia@precisionhealth.org',
     age: 45,
     gender: 'Female',
     diagnosis: 'HER2+ Breast Cancer Stage II',
@@ -29,6 +33,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-003',
+    name: 'James Wilson',
+    email: 'j.wilson@oncoclinic.net',
     age: 72,
     gender: 'Male',
     diagnosis: 'Metastatic Castration-Resistant Prostate Cancer (mCRPC)',
@@ -42,6 +48,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-004',
+    name: 'Emily Chen',
+    email: 'e.chen@lymphoma-center.org',
     age: 39,
     gender: 'Female',
     diagnosis: 'Acute Lymphoblastic Leukemia (ALL)',
@@ -55,6 +63,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-005',
+    name: 'Michael Brown',
+    email: 'm.brown@cancercare.org',
     age: 63,
     gender: 'Male',
     diagnosis: 'Colorectal Cancer Stage IV',
@@ -68,6 +78,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-006',
+    name: 'Susan Taylor',
+    email: 's.taylor@medcenter.org',
     age: 51,
     gender: 'Female',
     diagnosis: 'Triple-Negative Breast Cancer Stage III',
@@ -81,6 +93,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-007',
+    name: 'Arthur Miller',
+    email: 'a.miller@trials.org',
     age: 68,
     gender: 'Male',
     diagnosis: 'Diffuse Large B-Cell Lymphoma (DLBCL)',
@@ -94,6 +108,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-008',
+    name: 'Jessica Lee',
+    email: 'j.lee@oncocare.io',
     age: 35,
     gender: 'Female',
     diagnosis: 'Melanoma Stage IIIB',
@@ -107,6 +123,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-009',
+    name: 'David Kim',
+    email: 'd.kim@liverinstitute.org',
     age: 55,
     gender: 'Male',
     diagnosis: 'Hepatocellular Carcinoma (HCC)',
@@ -120,6 +138,8 @@ export const mockPatients: Patient[] = [
   },
   {
     id: 'P-010',
+    name: 'Rachel Adams',
+    email: 'r.adams@womenscancer.net',
     age: 47,
     gender: 'Female',
     diagnosis: 'Ovarian Cancer Stage IIIC',

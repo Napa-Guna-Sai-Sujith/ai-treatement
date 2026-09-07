@@ -40,8 +40,9 @@ export default function PatientCard({ patient, isSelected, onClick }: Props) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">{patient.id}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold text-white">{patient.name || patient.id}</span>
+            {patient.name && <span className="text-[10px] font-mono text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded">[{patient.id}]</span>}
             <span className="text-xs text-slate-500">|</span>
             <span className="text-xs text-slate-400">{patient.age}y</span>
           </div>
