@@ -214,9 +214,14 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-white">{u.name}</span>
                         <span className="text-xs text-indigo-400 font-medium">• {u.role}</span>
+                        {(u as any).docId && (
+                          <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] font-mono font-bold rounded border border-indigo-500/30">
+                            Doc ID: {(u as any).docId}
+                          </span>
+                        )}
                         {u.licenseNumber && (
                           <span className="px-2 py-0.5 bg-slate-800 border border-white/10 text-slate-300 text-[10px] font-mono rounded">
                             Lic: {u.licenseNumber}
@@ -265,7 +270,7 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                       <p className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Admin Quick Profile Editor</p>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="text-[10px] text-slate-400 block mb-1">User Name</label>
+                          <label className="text-[10px] text-slate-400 block mb-1">Doctor Name</label>
                           <input
                             type="text"
                             value={u.name}
@@ -283,16 +288,28 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] text-slate-400 block mb-1">Role / Specialty</label>
+                          <label className="text-[10px] text-slate-400 block mb-1">Doctor ID</label>
+                          <input
+                            type="text"
+                            value={(u as any).docId || ''}
+                            onChange={(e) => updateUserData(u.id, { docId: e.target.value } as any)}
+                            placeholder="e.g. DOC-9842"
+                            className="w-full px-2.5 py-1 bg-slate-800 border border-white/10 rounded-lg text-xs text-white font-mono"
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label className="text-[10px] text-slate-400 block mb-1">Treatment Specialization Role</label>
                           <select
                             value={u.role}
                             onChange={(e) => updateUserData(u.id, { role: e.target.value })}
                             className="w-full px-2.5 py-1 bg-slate-800 border border-white/10 rounded-lg text-xs text-white"
                           >
-                            <option value="Medical Oncologist">Medical Oncologist</option>
-                            <option value="Genomic Researcher">Genomic Researcher</option>
-                            <option value="Clinical Trial Investigator">Clinical Trial Investigator</option>
-                            <option value="Biostatistician">Biostatistician</option>
+                            <option value="Medical Oncologist — Targeted & Chemo Regimens">Medical Oncologist — Targeted & Chemo Regimens</option>
+                            <option value="Immunotherapy & Checkpoint Specialist">Immunotherapy & Checkpoint Specialist</option>
+                            <option value="Cell & Gene Therapy / CAR-T Specialist">Cell & Gene Therapy / CAR-T Specialist</option>
+                            <option value="Radiation & Quantum Optimization Specialist">Radiation & Quantum Optimization Specialist</option>
+                            <option value="Clinical Trial Principal Investigator">Clinical Trial Principal Investigator</option>
+                            <option value="Precision Genomic & Biomarker Researcher">Precision Genomic & Biomarker Researcher</option>
                             <option value="System Administrator">System Administrator</option>
                           </select>
                         </div>

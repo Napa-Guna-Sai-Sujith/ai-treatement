@@ -5,6 +5,7 @@ export interface UserRecord {
   name: string;
   email: string;
   role: string;
+  docId?: string;
   licenseNumber?: string;
   isApproved: boolean;
   submittedAt?: string;

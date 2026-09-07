@@ -9,8 +9,8 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState('Medical Oncologist');
-  const [licenseNumber, setLicenseNumber] = useState('');
+  const [docId, setDocId] = useState('');
+  const [role, setRole] = useState('Medical Oncologist — Targeted & Chemo Regimens');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -23,8 +23,8 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
       setError('Please enter your full name');
       return;
     }
-    if (isRegister && !licenseNumber) {
-      setError('Please enter your medical / research license number');
+    if (isRegister && !docId) {
+      setError('Please enter your Doctor ID (e.g. DOC-9842)');
       return;
     }
 
@@ -48,8 +48,8 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         id: Date.now(),
         name: name.trim(),
         email: email.trim(),
+        docId: docId.trim(),
         role: role,
-        licenseNumber: licenseNumber.trim(),
         isApproved: false,
         submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
@@ -98,10 +98,10 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">
-            {isRegister ? 'Create QuantumCare Account' : 'Welcome to QuantumCare AI'}
+            {isRegister ? 'Doctor & Practitioner Registration' : 'Welcome to QuantumCare AI'}
           </h2>
           <p className="text-sm text-slate-400 mt-1">
-            {isRegister ? 'Register to access precision oncology tools' : 'Sign in to access AI & Quantum Treatment Dashboard'}
+            {isRegister ? 'Register doctor profile for AI & Quantum treatment access' : 'Sign in to access AI & Quantum Treatment Dashboard'}
           </p>
         </div>
 
@@ -114,27 +114,40 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {isRegister && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Full Name</label>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Doctor Full Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Dr. Sarah Jenkins"
+                placeholder="Dr. Sarah Jenkins, MD"
                 className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Email Address</label>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Doctor Email Address</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="oncologist@hospital.org"
+              placeholder="doctor@oncology.org"
               className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
             />
           </div>
+
+          {isRegister && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Doctor ID (Doc ID)</label>
+              <input
+                type="text"
+                value={docId}
+                onChange={(e) => setDocId(e.target.value)}
+                placeholder="e.g. DOC-8842 / MD-9910"
+                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Password</label>
@@ -148,32 +161,21 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
           </div>
 
           {isRegister && (
-            <>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Medical / Research License Number</label>
-                <input
-                  type="text"
-                  value={licenseNumber}
-                  onChange={(e) => setLicenseNumber(e.target.value)}
-                  placeholder="e.g. MD-892014-NY or LIC-44021"
-                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Role / Specialty</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                >
-                  <option value="Medical Oncologist">Medical Oncologist</option>
-                  <option value="Genomic Researcher">Genomic Researcher</option>
-                  <option value="Clinical Trial Investigator">Clinical Trial Investigator</option>
-                  <option value="Biostatistician">Biostatistician</option>
-                </select>
-              </div>
-            </>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Treatment Specialization Role</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-xs"
+              >
+                <option value="Medical Oncologist — Targeted & Chemo Regimens">Medical Oncologist — Targeted & Chemo Regimens</option>
+                <option value="Immunotherapy & Checkpoint Specialist">Immunotherapy & Checkpoint Specialist</option>
+                <option value="Cell & Gene Therapy / CAR-T Specialist">Cell & Gene Therapy / CAR-T Specialist</option>
+                <option value="Radiation & Quantum Optimization Specialist">Radiation & Quantum Optimization Specialist</option>
+                <option value="Clinical Trial Principal Investigator">Clinical Trial Principal Investigator</option>
+                <option value="Precision Genomic & Biomarker Researcher">Precision Genomic & Biomarker Researcher</option>
+              </select>
+            </div>
           )}
 
           <button
