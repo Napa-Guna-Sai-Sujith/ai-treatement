@@ -22,9 +22,10 @@ interface DashboardProps {
   user: { name: string; email: string; role: string } | null;
   setUser: (user: { name: string; email: string; role: string } | null) => void;
   onOpenProfile: () => void;
+  onPatientLogin?: (patientId: string) => void;
 }
 
-export default function Dashboard({ user, setUser, onOpenProfile }: DashboardProps) {
+export default function Dashboard({ user, setUser, onOpenProfile, onPatientLogin }: DashboardProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [patients, setPatients] = useState<Patient[]>(mockPatients);
   const [stratifiedClusters, setStratifiedClusters] = useState<StratifiedCluster[]>(clusters);
@@ -301,6 +302,28 @@ export default function Dashboard({ user, setUser, onOpenProfile }: DashboardPro
           </div>
         )}
       </div>
+
+      {/* Auth Modal with Switch-Case Doctor / Patient Login */}
+      {showAuthModal && (
+        <AuthModal
+          onLoginSuccess={(loggedInUser) => {
+            setUser(loggedInUser);
+            setShowAuthModal(false);
+          }}
+          onPatientLoginSuccess={(pId) => {
+            setShowAuthModal(false);
+            if (onPatientLogin) {
+              onPatientLogin(pId);
+            } else {
+              const found = patients.find(p => p.id.toUpperCase() === pId.toUpperCase());
+              if (found) {
+                handlePatientSelect(found);
+              }
+            }
+          }}
+          onClose={() => setShowAuthModal(false)}
+        />
+      )}
     </div>
   );
 }
