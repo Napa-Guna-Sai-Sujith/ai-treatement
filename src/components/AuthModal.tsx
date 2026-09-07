@@ -131,12 +131,13 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
     const patientExists = mockPatients.some(p => p.id.toUpperCase() === cleanId);
     
     if (!patientExists) {
-      setError(`Patient record for ID "${cleanId}" not found in database. Try P-001, P-002, etc.`);
+      setError(`Patient record for ID "${cleanId}" not found in database. Try P-001, P-002, ..., P-010.`);
       return;
     }
 
-    if (patientPassword.trim().length < 4) {
-      setError('Password must be at least 4 characters');
+    // Default password for all patients is 123456
+    if (patientPassword.trim() !== '123456') {
+      setError('Invalid patient password. Default password is: 123456');
       return;
     }
 
@@ -316,9 +317,10 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
                 type="password"
                 value={patientPassword}
                 onChange={(e) => setPatientPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all"
+                placeholder="123456"
+                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all text-xs"
               />
+              <p className="text-[10px] text-teal-400/90 mt-1 font-mono">Default Patient Password: 123456</p>
             </div>
 
             <button
