@@ -21,9 +21,9 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
   const isAdmin = user?.email?.toLowerCase().trim() === 'napagunasaisujith@gmail.com';
 
   const defaultUsers = [
-    { id: 2, name: 'Dr. Alex Vance', email: 'a.vance@precisionmed.io', role: 'Genomic Researcher', isApproved: false, submittedAt: '10 mins ago' },
-    { id: 3, name: 'Elena Rostova', email: 'e.rostova@trials.net', role: 'Clinical Trial Investigator', isApproved: false, submittedAt: '35 mins ago' },
-    { id: 4, name: 'Dr. Marcus Vance', email: 'm.vance@hospital.org', role: 'Medical Oncologist', isApproved: false, submittedAt: '2 hours ago' },
+    { id: 2, name: 'Dr. Alex Vance', email: 'a.vance@precisionmed.io', docId: 'DOC-1024', role: 'Genomic Researcher', isApproved: false, submittedAt: '10 mins ago' },
+    { id: 3, name: 'Elena Rostova', email: 'e.rostova@trials.net', docId: 'DOC-5519', role: 'Clinical Trial Investigator', isApproved: false, submittedAt: '35 mins ago' },
+    { id: 4, name: 'Dr. Marcus Vance', email: 'm.vance@hospital.org', docId: 'DOC-7890', role: 'Medical Oncologist', isApproved: false, submittedAt: '2 hours ago' },
   ];
 
   const loadAllUsers = () => {

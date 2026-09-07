@@ -15,21 +15,22 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please fill in all required fields');
-      return;
-    }
-    if (isRegister && !name) {
-      setError('Please enter your full name');
-      return;
-    }
-    if (isRegister && !docId) {
-      setError('Please enter your Doctor ID (e.g. DOC-9842)');
-      return;
+    if (isRegister) {
+      if (!name || !email || !docId || !password) {
+        setError('Please fill in all registration fields');
+        return;
+      }
+    } else {
+      if (!docId || !password) {
+        setError('Please enter your Doctor ID (or Email) and password');
+        return;
+      }
     }
 
-    // Check for Admin Credentials
-    if (email.toLowerCase().trim() === 'napagunasaisujith@gmail.com') {
+    const inputIdentifier = docId.trim().toLowerCase();
+
+    // Check for Admin Credentials (either email or admin doc ID)
+    if (inputIdentifier === 'napagunasaisujith@gmail.com' || inputIdentifier === 'adm-9901' || inputIdentifier === 'admin') {
       if (password !== '123456') {
         setError('Invalid password for Admin account');
         return;
@@ -48,37 +49,44 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
         id: Date.now(),
         name: name.trim(),
         email: email.trim(),
-        docId: docId.trim(),
+        docId: docId.trim().toUpperCase(),
         role: role,
         isApproved: false,
         submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       
       const existing = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
-      const filtered = existing.filter((u: any) => u.email.toLowerCase() !== newUser.email.toLowerCase());
+      const filtered = existing.filter((u: any) => 
+        u.email.toLowerCase() !== newUser.email.toLowerCase() && 
+        u.docId?.toUpperCase() !== newUser.docId.toUpperCase()
+      );
       localStorage.setItem('quantum_registered_users', JSON.stringify([newUser, ...filtered]));
 
-      console.log(`[Neon DB Sync Log]: Recorded registration for ${newUser.name} (${newUser.email}) in users table.`);
+      console.log(`[Neon DB Sync Log]: Recorded registration for ${newUser.name} (Doc ID: ${newUser.docId}) in users table.`);
 
       setError('Registration submitted! Account pending Administrator approval before sign in.');
       return;
     }
 
-    // Regular User Login - Check approval status
+    // Doctor Sign-In using Doctor ID (or fallback email)
     const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
-    const registeredUser = saved.find((u: any) => u.email.toLowerCase() === email.toLowerCase().trim());
+    const registeredUser = saved.find((u: any) => 
+      (u.docId && u.docId.toLowerCase() === inputIdentifier) ||
+      (u.email && u.email.toLowerCase() === inputIdentifier)
+    );
 
     if (registeredUser && !registeredUser.isApproved) {
-      setError('Your account is currently pending Administrator approval. Please wait for Admin authorization.');
+      setError(`Doctor account (${registeredUser.docId || registeredUser.email}) is currently pending Administrator approval.`);
       return;
     }
 
-    const userName = registeredUser?.name || name || email.split('@')[0] || 'Dr. Sarah Jenkins';
+    const userName = registeredUser?.name || name || `Doctor (${docId.trim().toUpperCase()})`;
+    const userEmail = registeredUser?.email || (email.includes('@') ? email : `${inputIdentifier}@oncology.org`);
     const userRole = registeredUser?.role || role;
 
     onLoginSuccess({
       name: userName.charAt(0).toUpperCase() + userName.slice(1),
-      email: email.trim(),
+      email: userEmail.trim(),
       role: userRole
     });
   };
@@ -98,10 +106,10 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-white tracking-tight">
-            {isRegister ? 'Doctor & Practitioner Registration' : 'Welcome to QuantumCare AI'}
+            {isRegister ? 'Doctor & Practitioner Registration' : 'Doctor Sign In'}
           </h2>
           <p className="text-sm text-slate-400 mt-1">
-            {isRegister ? 'Register doctor profile for AI & Quantum treatment access' : 'Sign in to access AI & Quantum Treatment Dashboard'}
+            {isRegister ? 'Register doctor profile for AI & Quantum treatment access' : 'Enter your Doctor ID to access AI & Quantum Treatment Dashboard'}
           </p>
         </div>
 
@@ -125,29 +133,29 @@ export default function AuthModal({ onLoginSuccess }: AuthModalProps) {
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Doctor Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="doctor@oncology.org"
-              className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-            />
-          </div>
-
           {isRegister && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Doctor ID (Doc ID)</label>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Doctor Email Address</label>
               <input
-                type="text"
-                value={docId}
-                onChange={(e) => setDocId(e.target.value)}
-                placeholder="e.g. DOC-8842 / MD-9910"
-                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="doctor@oncology.org"
+                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
               />
             </div>
           )}
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Doctor ID (Doc ID)</label>
+            <input
+              type="text"
+              value={docId}
+              onChange={(e) => setDocId(e.target.value)}
+              placeholder="e.g. DOC-8842 / MD-9910"
+              className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+            />
+          </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Password</label>
