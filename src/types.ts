@@ -1,3 +1,53 @@
+export interface BiomarkerData {
+  troponin: number;
+  crp: number;
+  il6: number;
+  tnfAlpha: number;
+  vegf: number;
+  creatinine: number;
+  alt: number;
+  ast: number;
+  wbc: number;
+  hemoglobin: number;
+}
+
+export interface DoctorSuggestion {
+  id: string;
+  date: string;
+  category: 'Dietary & Nutrition' | 'Medication Regimen' | 'Clinical Monitoring' | 'Emergency Precautions' | 'Lifestyle & Recovery';
+  message: string;
+  doctorName: string;
+  docId: string;
+}
+
+export interface SideEffectItem {
+  effect: string;
+  severity: 'Mild' | 'Moderate' | 'High Alert';
+  managementAdvice: string;
+}
+
+export interface CostEfficiencyData {
+  estimatedCostUsd: number;
+  insuranceCoveredPercent: number;
+  patientSavingsEstimated: number;
+  monthlyEstimatedOutofPocket: number;
+  costEfficiencyTier: 'High Efficiency' | 'Optimal Value' | 'Premium Tier';
+  comparatorCostUsd: number;
+}
+
+export interface PrescribedTreatment {
+  treatmentId: string;
+  treatmentName: string;
+  drugClass: string;
+  mechanism: string;
+  dosageInstructions: string;
+  cycleFrequency: string;
+  quantumEfficacyScore: number;
+  sideEffectRiskScore: number;
+  costEfficiency: CostEfficiencyData;
+  sideEffects: SideEffectItem[];
+}
+
 export interface Patient {
   id: string;
   name?: string;
@@ -10,19 +60,21 @@ export interface Patient {
   priorTreatments: string[];
   geneExpression: number[];
   cluster?: number;
+  assignedDoctorId?: string;
+  assignedDoctorName?: string;
+  assignedDoctorRole?: string;
+  assignedDoctorEmail?: string;
+  doctorSuggestions?: DoctorSuggestion[];
+  prescribedTreatment?: PrescribedTreatment;
 }
 
-export interface BiomarkerData {
-  troponin: number;
-  crp: number;
-  il6: number;
-  tnfAlpha: number;
-  vegf: number;
-  creatinine: number;
-  alt: number;
-  ast: number;
-  wbc: number;
-  hemoglobin: number;
+export interface DoctorProfile {
+  docId: string;
+  name: string;
+  email: string;
+  role: string;
+  hospital: string;
+  specialty: string;
 }
 
 export interface TreatmentOption {
@@ -90,4 +142,3 @@ export interface SimulationState {
   isSimulating: boolean;
   simulationSpeed: number;
 }
-

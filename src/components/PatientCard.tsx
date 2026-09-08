@@ -47,12 +47,26 @@ export default function PatientCard({ patient, isSelected, onClick }: Props) {
             <span className="text-xs text-slate-400">{patient.age}y</span>
           </div>
           <p className="text-xs text-slate-400 truncate mt-0.5">{patient.diagnosis}</p>
+          
+          {/* Assigned Doctor Mini Tag */}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[9px] font-mono text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.2 rounded">
+              👨‍⚕️ {patient.assignedDoctorName || 'Dr. Rajesh Sharma, MD'}
+            </span>
+            {(patient.doctorSuggestions || []).length > 0 && (
+              <span className="text-[9px] font-mono text-amber-300 bg-amber-500/10 px-1 py-0.2 rounded">
+                ✍️ {patient.doctorSuggestions?.length} notes
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Cluster badge */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: clusterColor }} />
-          <span className="text-[10px] font-medium text-slate-400">{clusterName}</span>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: clusterColor }} />
+            <span className="text-[10px] font-medium text-slate-400">{clusterName}</span>
+          </div>
         </div>
       </div>
 

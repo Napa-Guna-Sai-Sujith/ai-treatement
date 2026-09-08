@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { mockPatients } from '../data/mockData';
+import { getStoredPatients } from '../utils/patientService';
+import { mockDoctors } from '../data/mockData';
 
 interface AuthModalProps {
-  onLoginSuccess: (user: { name: string; email: string; role: string }) => void;
+  onLoginSuccess: (user: { name: string; email: string; role: string; docId?: string }) => void;
   onPatientLoginSuccess?: (patientId: string) => void;
   onClose?: () => void;
 }
@@ -16,15 +17,15 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [docId, setDocId] = useState('');
-  const [doctorRole, setDoctorRole] = useState('Medical Oncologist — Targeted & Chemo Regimens');
+  const [docId, setDocId] = useState('DOC-1092');
+  const [doctorRole, setDoctorRole] = useState('Immunotherapy & Checkpoint Specialist');
 
   // Admin credentials
   const [adminEmail, setAdminEmail] = useState('napagunasaisujith@gmail.com');
   const [adminPassword, setAdminPassword] = useState('');
 
   // Patient credentials
-  const [patientId, setPatientId] = useState('');
+  const [patientId, setPatientId] = useState('P-001');
   const [patientPassword, setPatientPassword] = useState('');
 
   const [error, setError] = useState('');
@@ -44,7 +45,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
       }
     }
 
-    const inputIdentifier = docId.trim().toLowerCase();
+    const inputIdentifier = docId.trim().toUpperCase();
 
     // Doctor Registration (Pending approval)
     if (isRegister) {
@@ -52,7 +53,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
         id: Date.now(),
         name: name.trim(),
         email: email.trim(),
-        docId: docId.trim().toUpperCase(),
+        docId: inputIdentifier,
         role: doctorRole,
         isApproved: false,
         submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -69,11 +70,27 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
       return;
     }
 
-    // Doctor Sign In verification
+    // Default predefined mock doctors check
+    const matchedMockDoc = mockDoctors.find(d => d.docId.toUpperCase() === inputIdentifier);
+    if (matchedMockDoc) {
+      if (password !== '123456') {
+        setError('Invalid password for doctor account. Default password: 123456');
+        return;
+      }
+      onLoginSuccess({
+        name: matchedMockDoc.name,
+        email: matchedMockDoc.email,
+        role: matchedMockDoc.role,
+        docId: matchedMockDoc.docId
+      });
+      return;
+    }
+
+    // Doctor Sign In verification for newly registered users
     const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
     const registeredUser = saved.find((u: any) => 
-      (u.docId && u.docId.toLowerCase() === inputIdentifier) ||
-      (u.email && u.email.toLowerCase() === inputIdentifier)
+      (u.docId && u.docId.toUpperCase() === inputIdentifier) ||
+      (u.email && u.email.toLowerCase() === inputIdentifier.toLowerCase())
     );
 
     if (registeredUser && !registeredUser.isApproved) {
@@ -81,14 +98,15 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
       return;
     }
 
-    const userName = registeredUser?.name || name || `Doctor (${docId.trim().toUpperCase()})`;
-    const userEmail = registeredUser?.email || (email.includes('@') ? email : `${inputIdentifier}@oncology.org`);
+    const userName = registeredUser?.name || name || `Doctor (${inputIdentifier})`;
+    const userEmail = registeredUser?.email || (email.includes('@') ? email : `${inputIdentifier.toLowerCase()}@oncocenter.org`);
     const finalRole = registeredUser?.role || doctorRole;
 
     onLoginSuccess({
-      name: userName.charAt(0).toUpperCase() + userName.slice(1),
+      name: userName,
       email: userEmail.trim(),
-      role: finalRole
+      role: finalRole,
+      docId: registeredUser?.docId || inputIdentifier
     });
   };
 
@@ -112,6 +130,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
         name: 'System Admin (Saisujith)',
         email: 'napagunasaisujith@gmail.com',
         role: 'System Administrator',
+        docId: 'ADM-9901'
       });
       return;
     }
@@ -128,10 +147,11 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
     }
 
     const cleanId = patientId.trim().toUpperCase();
-    const patientExists = mockPatients.some(p => p.id.toUpperCase() === cleanId);
+    const storedPatients = getStoredPatients();
+    const patientExists = storedPatients.some(p => p.id.toUpperCase() === cleanId);
     
     if (!patientExists) {
-      setError(`Patient record for ID "${cleanId}" not found in database. Try P-001, P-002, ..., P-010.`);
+      setError(`Patient record for ID "${cleanId}" not found in database. Try P-001 through P-010.`);
       return;
     }
 
@@ -147,7 +167,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md font-sans">
       <div className="w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
         {/* Ambient Glows */}
         <div className={`absolute -top-20 -left-20 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors duration-300 ${
@@ -161,7 +181,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -189,9 +209,9 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
               }}
               className="w-full px-4 py-2.5 bg-slate-950/90 border border-white/15 rounded-xl text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer pr-10"
             >
-              <option value="doctor">🩺 Doctor / Medical Practitioner Portal</option>
-              <option value="admin">🛡️ System Administrator Portal (napagunasaisujith@gmail.com)</option>
-              <option value="patient">🧬 Patient Care Portal (P-001, P-002, etc.)</option>
+              <option value="doctor">🩺 Doctor Portal (DOC-1092 / DOC-2045 / DOC-3001)</option>
+              <option value="patient">🧬 Patient Portal (P-001 to P-010)</option>
+              <option value="admin">🛡️ Administrator Portal (napagunasaisujith@gmail.com)</option>
             </select>
             <div className="absolute right-3.5 top-3 pointer-events-none text-slate-400">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +249,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
             {roleMode === 'admin'
               ? 'Administrator Console Sign In'
               : roleMode === 'patient'
-                ? 'Patient Care Sign In'
+                ? 'Patient Care Portal Sign In'
                 : isRegister
                   ? 'Doctor & Practitioner Registration'
                   : 'Doctor Sign In'
@@ -239,10 +259,10 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
             {roleMode === 'admin'
               ? 'System Administrator credentials with approval privileges'
               : roleMode === 'patient'
-                ? 'Access personal biomarker profile & quantum treatment plan'
+                ? 'Access suggestions board, prescribed plan, cost efficiency & side effects'
                 : isRegister
-                  ? 'Register doctor profile for AI & Quantum treatment access'
-                  : 'Enter your Doctor ID to access AI & Quantum Treatment Dashboard'
+                  ? 'Register doctor profile for patient supervision and AI optimization'
+                  : 'Enter your Doctor ID to manage your patients & clinical directives'
             }
           </p>
         </div>
@@ -303,10 +323,12 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
                 type="text"
                 value={patientId}
                 onChange={(e) => setPatientId(e.target.value)}
-                placeholder="e.g. P-001, P-002, P-003"
+                placeholder="e.g. P-001, P-002, P-003, ..., P-010"
                 className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all uppercase"
               />
-              <p className="text-[10px] text-slate-500 mt-1">Provided on your hospital admission card (e.g. P-001 to P-010)</p>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Doctor A Patients: <strong className="text-teal-400">P-001 to P-005</strong> | Doctor B Patients: <strong className="text-indigo-400">P-006 to P-010</strong>
+              </p>
             </div>
 
             <div>
@@ -332,7 +354,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
 
             <div className="pt-2 text-center">
               <p className="text-[11px] text-slate-400">
-                🔒 Patient accounts are registered by clinical staff. No public registration required.
+                🔒 Patient accounts are registered by their assigned doctor. No public registration required.
               </p>
             </div>
           </form>
@@ -348,7 +370,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Dr. Sarah Jenkins, MD"
+                  placeholder="Dr. Rajesh Sharma, MD"
                   className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-xs"
                 />
               </div>
@@ -361,7 +383,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="doctor@oncology.org"
+                  placeholder="doctor@oncocenter.org"
                   className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-xs"
                 />
               </div>
@@ -373,9 +395,16 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
                 type="text"
                 value={docId}
                 onChange={(e) => setDocId(e.target.value)}
-                placeholder="e.g. DOC-8842 / MD-9910"
-                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                placeholder="DOC-1092 / DOC-2045 / DOC-3001"
+                className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all uppercase"
               />
+              {!isRegister && (
+                <div className="text-[10px] text-slate-400 mt-1 flex flex-wrap gap-1">
+                  <span>Defaults:</span>
+                  <button type="button" onClick={() => { setDocId('DOC-1092'); setPassword('123456'); }} className="text-indigo-400 hover:underline">DOC-1092 (Dr. Sharma)</button> • 
+                  <button type="button" onClick={() => { setDocId('DOC-2045'); setPassword('123456'); }} className="text-indigo-400 hover:underline">DOC-2045 (Dr. Patel)</button>
+                </div>
+              )}
             </div>
 
             <div>
@@ -384,9 +413,10 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="123456"
                 className="w-full px-4 py-2.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-xs"
               />
+              <p className="text-[10px] text-indigo-400/90 mt-1 font-mono">Default Doctor Password: 123456</p>
             </div>
 
             {isRegister && (

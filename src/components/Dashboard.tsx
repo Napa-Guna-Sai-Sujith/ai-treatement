@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Patient, StratifiedCluster, TreatmentPlan, QuantumOptimizationResult } from '../types';
-import { mockPatients, treatmentOptions, clusters } from '../data/mockData';
+import { treatmentOptions, clusters } from '../data/mockData';
+import { getStoredPatients, addPatientRecord, removePatientRecord } from '../utils/patientService';
 import { stratifyPatients, getClusterProbabilities } from '../engine/AIStratificationEngine';
 import { optimizeTreatmentPlan } from '../engine/QuantumOptimizer';
 import PatientCard from './PatientCard';
@@ -20,15 +21,15 @@ import AuthModal from './AuthModal';
 type Tab = 'overview' | 'patients' | 'stratification' | 'genomics' | 'quantum' | 'treatment' | 'trials' | 'economics' | 'dataset' | 'aiquantum';
 
 interface DashboardProps {
-  user: { name: string; email: string; role: string } | null;
-  setUser: (user: { name: string; email: string; role: string } | null) => void;
+  user: { name: string; email: string; role: string; docId?: string } | null;
+  setUser: (user: { name: string; email: string; role: string; docId?: string } | null) => void;
   onOpenProfile: () => void;
   onPatientLogin?: (patientId: string) => void;
 }
 
 export default function Dashboard({ user, setUser, onOpenProfile, onPatientLogin }: DashboardProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [patients, setPatients] = useState<Patient[]>(mockPatients);
+  const [patients, setPatients] = useState<Patient[]>(getStoredPatients);
   const [stratifiedClusters, setStratifiedClusters] = useState<StratifiedCluster[]>(clusters);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [treatmentPlan, setTreatmentPlan] = useState<TreatmentPlan | null>(null);
@@ -39,6 +40,18 @@ export default function Dashboard({ user, setUser, onOpenProfile, onPatientLogin
   const [clusterProbs, setClusterProbs] = useState<{ clusterId: number; probability: number }[]>([]);
   const simRef = useRef<number>(0);
 
+  const refreshPatientsFromStorage = useCallback(() => {
+    const updated = getStoredPatients();
+    const { stratifiedPatients, clusters: updatedClusters } = stratifyPatients(updated);
+    setPatients(stratifiedPatients);
+    setStratifiedClusters(updatedClusters);
+
+    if (selectedPatient) {
+      const refreshedSelected = updated.find(p => p.id === selectedPatient.id);
+      if (refreshedSelected) setSelectedPatient(refreshedSelected);
+    }
+  }, [selectedPatient]);
+
   const handleImportPatients = (newPatients: Patient[]) => {
     const updatedPatients = [...patients, ...newPatients];
     const { stratifiedPatients, clusters: updatedClusters } = stratifyPatients(updatedPatients);
@@ -47,20 +60,20 @@ export default function Dashboard({ user, setUser, onOpenProfile, onPatientLogin
   };
 
   const handleAddSinglePatient = (newPatient: Patient) => {
-    const updatedPatients = [newPatient, ...patients];
-    const { stratifiedPatients, clusters: updatedClusters } = stratifyPatients(updatedPatients);
+    const updated = addPatientRecord(newPatient);
+    const { stratifiedPatients, clusters: updatedClusters } = stratifyPatients(updated);
     setPatients(stratifiedPatients);
     setStratifiedClusters(updatedClusters);
   };
 
   const handleDeletePatient = (patientId: string) => {
-    const updatedPatients = patients.filter(p => p.id !== patientId);
+    const updated = removePatientRecord(patientId);
     if (selectedPatient?.id === patientId) {
       setSelectedPatient(null);
       setTreatmentPlan(null);
       setQuantumResults([]);
     }
-    const { stratifiedPatients, clusters: updatedClusters } = stratifyPatients(updatedPatients);
+    const { stratifiedPatients, clusters: updatedClusters } = stratifyPatients(updated);
     setPatients(stratifiedPatients);
     setStratifiedClusters(updatedClusters);
   };
@@ -116,6 +129,17 @@ export default function Dashboard({ user, setUser, onOpenProfile, onPatientLogin
             setUser(userData);
             setShowAuthModal(false);
           }}
+          onPatientLoginSuccess={(pId) => {
+            setShowAuthModal(false);
+            if (onPatientLogin) {
+              onPatientLogin(pId);
+            } else {
+              const found = patients.find(p => p.id.toUpperCase() === pId.toUpperCase());
+              if (found) {
+                handlePatientSelect(found);
+              }
+            }
+          }}
         />
       )}
 
@@ -164,8 +188,11 @@ export default function Dashboard({ user, setUser, onOpenProfile, onPatientLogin
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow">
                       {user.name.charAt(0)}
                     </div>
-                    <div className="hidden sm:block">
-                      <p className="text-xs font-semibold text-white hover:text-indigo-300 transition-colors">{user.name}</p>
+                    <div className="hidden sm:block text-left">
+                      <p className="text-xs font-semibold text-white hover:text-indigo-300 transition-colors flex items-center gap-1">
+                        {user.name}
+                        {user.docId && <span className="text-[9px] font-mono text-indigo-300 bg-indigo-500/20 px-1 py-0.2 rounded">{user.docId}</span>}
+                      </p>
                       <p className="text-[10px] text-indigo-400">{user.role}</p>
                     </div>
                   </button>
@@ -287,9 +314,11 @@ export default function Dashboard({ user, setUser, onOpenProfile, onPatientLogin
               {activeTab === 'patients' && (
                 <PatientManager
                   patients={patients}
+                  currentUser={user}
                   onAddPatient={handleAddSinglePatient}
                   onDeletePatient={handleDeletePatient}
                   onSelectPatient={handlePatientSelect}
+                  onRefreshPatients={refreshPatientsFromStorage}
                 />
               )}
 
@@ -299,6 +328,8 @@ export default function Dashboard({ user, setUser, onOpenProfile, onPatientLogin
                   quantumResults={quantumResults}
                   selectedPatient={selectedPatient}
                   isSimulating={isSimulating}
+                  currentUser={user}
+                  onRefreshPatients={refreshPatientsFromStorage}
                 />
               )}
 

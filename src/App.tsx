@@ -5,7 +5,7 @@ import PatientPortal from './components/PatientPortal';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'patient'>('dashboard');
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; role: string; docId?: string } | null>(null);
   const [loggedInPatientId, setLoggedInPatientId] = useState<string | null>(null);
 
   if (currentView === 'patient' && loggedInPatientId) {
@@ -24,7 +24,7 @@ export default function App() {
     return (
       <ProfilePage
         user={user}
-        onUpdateUser={(updated) => setUser(updated)}
+        onUpdateUser={(updated) => setUser({ ...user, ...updated })}
         onBackToDashboard={() => setCurrentView('dashboard')}
       />
     );
