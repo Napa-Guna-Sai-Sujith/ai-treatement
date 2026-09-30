@@ -75,7 +75,7 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
     }
 
     if (!registeredUser.isApproved) {
-      setError(`Doctor account (${registeredUser.docId} - ${registeredUser.name}) is currently pending Administrator approval.`);
+      setError(`Access Denied: Doctor account (${registeredUser.docId} - ${registeredUser.name}) access is currently revoked or pending Administrator approval.`);
       return;
     }
 

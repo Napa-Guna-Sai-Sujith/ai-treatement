@@ -5,7 +5,8 @@ import {
   updateUserApprovalStatus,
   updateUserDetails,
   deleteUserAccount,
-  verifyAndPurgeInvalidAccounts
+  verifyAndPurgeInvalidAccounts,
+  resetToInitialVerifiedDoctors
 } from '../utils/userService';
 
 interface UserProfile {
@@ -31,12 +32,12 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
   const [registeredUsers, setRegisteredUsers] = useState<UserRecord[]>([]);
   const [userFilter, setUserFilter] = useState<'all' | 'pending' | 'approved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<UserRecord>>({});
   const [actionNotice, setActionNotice] = useState<string>('');
 
   useEffect(() => {
-    // Clean initial load
+    // Clean initial load with deduplication
     const users = getRegisteredUsers();
     setRegisteredUsers(users);
   }, []);
@@ -60,22 +61,22 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
     setTimeout(() => setActionNotice(''), 4000);
   };
 
-  const handleToggleApproval = (id: number, currentApproved: boolean) => {
-    const updated = updateUserApprovalStatus(id, !currentApproved);
+  const handleToggleApproval = (docId: string, currentApproved: boolean) => {
+    const updated = updateUserApprovalStatus(docId, !currentApproved);
     setRegisteredUsers(updated);
-    showNotification(`Account ${!currentApproved ? 'approved' : 'revoked'} successfully!`);
+    showNotification(`Doctor ${docId} access ${!currentApproved ? '✓ APPROVED' : '🔒 REVOKED'}`);
   };
 
-  const handleDeleteUser = (id: number, name: string) => {
-    if (window.confirm(`Are you sure you want to permanently delete and remove ${name} from the system database?`)) {
-      const updated = deleteUserAccount(id);
+  const handleDeleteUser = (docId: string, name: string) => {
+    if (window.confirm(`Are you sure you want to permanently delete and remove ${name} (${docId}) from the system database?`)) {
+      const updated = deleteUserAccount(docId);
       setRegisteredUsers(updated);
-      showNotification(`Account "${name}" permanently removed from database.`);
+      showNotification(`Account "${name} (${docId})" permanently removed from database.`);
     }
   };
 
   const handleStartEdit = (u: UserRecord) => {
-    setEditingUserId(u.id);
+    setEditingDocId(u.docId);
     setEditFormData({
       name: u.name,
       email: u.email,
@@ -84,10 +85,10 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
     });
   };
 
-  const handleSaveEdit = (id: number) => {
-    const updated = updateUserDetails(id, editFormData);
+  const handleSaveEdit = (originalDocId: string) => {
+    const updated = updateUserDetails(originalDocId, editFormData);
     setRegisteredUsers(updated);
-    setEditingUserId(null);
+    setEditingDocId(null);
     showNotification('Doctor profile details updated successfully!');
   };
 
@@ -96,9 +97,17 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
     setRegisteredUsers(cleanList);
     showNotification(
       purgedCount > 0
-        ? `Database verified: ${purgedCount} glitched / un-registered accounts were cleaned and purged.`
-        : 'Database verified: All accounts are authentic, valid, and synchronized with 0 glitches.'
+        ? `Database clean: Purged ${purgedCount} duplicate/glitched entries. Total active doctors: ${cleanList.length}.`
+        : `Database verified: All ${cleanList.length} doctor accounts are 100% unique with 0 duplicates.`
     );
+  };
+
+  const handleResetToDefaults = () => {
+    if (window.confirm('Reset database to clean verified doctors (DOC-1092, DOC-2045, DOC-3001) and clear any corrupt duplicates?')) {
+      const reset = resetToInitialVerifiedDoctors();
+      setRegisteredUsers(reset);
+      showNotification('Database successfully reset to initial clean verified doctor cohort.');
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -112,7 +121,16 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const filteredUsers = registeredUsers.filter(u => {
+  // Extra safety: Deduplicate by Doc ID before filtering and rendering
+  const dedupedUsersMap = new Map<string, UserRecord>();
+  for (const u of registeredUsers) {
+    if (u && u.docId) {
+      dedupedUsersMap.set(u.docId.toUpperCase(), u);
+    }
+  }
+  const uniqueRegisteredUsers = Array.from(dedupedUsersMap.values());
+
+  const filteredUsers = uniqueRegisteredUsers.filter(u => {
     const matchesFilter =
       userFilter === 'all'
         ? true
@@ -123,14 +141,14 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
     const matchesSearch =
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.docId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.docId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.role.toLowerCase().includes(searchQuery.toLowerCase());
 
     return matchesFilter && matchesSearch;
   });
 
-  const pendingCount = registeredUsers.filter(u => !u.isApproved).length;
-  const approvedCount = registeredUsers.filter(u => u.isApproved).length;
+  const pendingCount = uniqueRegisteredUsers.filter(u => !u.isApproved).length;
+  const approvedCount = uniqueRegisteredUsers.filter(u => u.isApproved).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -250,21 +268,32 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                   Doctor Account & Approval Management Console
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Approve new practitioner registrations, edit doctor profiles, or permanently remove unverified/glitched accounts
+                  Approve new practitioner registrations, revoke doctor access, or clean up any duplicate/glitched accounts
                 </p>
               </div>
 
-              {/* Verify & Purge Button */}
-              <button
-                onClick={handleVerifyAndPurge}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer flex items-center gap-1.5 shrink-0 self-start md:self-auto"
-                title="Scan and clean any un-registered, duplicate, or corrupted entries from DB"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Verify & Purge Glitched Accounts
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Reset to Clean Defaults */}
+                <button
+                  onClick={handleResetToDefaults}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/10 transition-all cursor-pointer"
+                  title="Reset to 3 verified baseline doctors"
+                >
+                  Reset Defaults
+                </button>
+
+                {/* Verify & Purge Button */}
+                <button
+                  onClick={handleVerifyAndPurge}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  title="Clean all duplicate doctor accounts immediately"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Purge Duplicates & Clean DB
+                </button>
+              </div>
             </div>
 
             {/* Filter Tabs & Search Bar */}
@@ -276,7 +305,7 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                     userFilter === 'all' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  All Accounts ({registeredUsers.length})
+                  All Doctors ({uniqueRegisteredUsers.length})
                 </button>
                 <button
                   onClick={() => setUserFilter('pending')}
@@ -316,7 +345,7 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
               <div className="space-y-3">
                 {filteredUsers.map((u) => (
                   <div
-                    key={u.id}
+                    key={u.docId}
                     className={`p-4 rounded-xl border transition-all flex flex-col justify-between gap-4 ${
                       u.isApproved
                         ? 'bg-emerald-950/20 border-emerald-500/30'
@@ -328,11 +357,9 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-white">{u.name}</span>
                           <span className="text-xs text-indigo-400 font-medium">• {u.role}</span>
-                          {u.docId && (
-                            <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] font-mono font-bold rounded border border-indigo-500/30">
-                              Doc ID: {u.docId}
-                            </span>
-                          )}
+                          <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] font-mono font-bold rounded border border-indigo-500/30">
+                            Doc ID: {u.docId}
+                          </span>
                           {u.licenseNumber && (
                             <span className="px-2 py-0.5 bg-slate-800 border border-white/10 text-slate-300 text-[10px] font-mono rounded">
                               Lic: {u.licenseNumber}
@@ -351,7 +378,7 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
-                          {editingUserId === u.id ? 'Cancel' : 'Edit'}
+                          {editingDocId === u.docId ? 'Cancel' : 'Edit'}
                         </button>
 
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${
@@ -363,7 +390,7 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                         </span>
 
                         <button
-                          onClick={() => handleToggleApproval(u.id, u.isApproved)}
+                          onClick={() => handleToggleApproval(u.docId, u.isApproved)}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow ${
                             u.isApproved
                               ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/30'
@@ -374,7 +401,7 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                         </button>
 
                         <button
-                          onClick={() => handleDeleteUser(u.id, u.name)}
+                          onClick={() => handleDeleteUser(u.docId, u.name)}
                           className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-all cursor-pointer"
                           title="Permanently remove account"
                         >
@@ -384,7 +411,7 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                     </div>
 
                     {/* Inline Admin Edit Form */}
-                    {editingUserId === u.id && (
+                    {editingDocId === u.docId && (
                       <div className="mt-3 p-4 bg-slate-900/90 rounded-xl border border-indigo-500/40 space-y-3">
                         <p className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Admin Quick Doctor Editor</p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -434,13 +461,13 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
                         </div>
                         <div className="flex justify-end gap-2 pt-1">
                           <button
-                            onClick={() => setEditingUserId(null)}
+                            onClick={() => setEditingDocId(null)}
                             className="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-lg hover:bg-slate-700"
                           >
                             Cancel
                           </button>
                           <button
-                            onClick={() => handleSaveEdit(u.id)}
+                            onClick={() => handleSaveEdit(u.docId)}
                             className="px-4 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow"
                           >
                             Save Changes
@@ -591,10 +618,10 @@ export default function ProfilePage({ user, onUpdateUser, onBackToDashboard }: P
 
             <div className="space-y-2">
               {[
-                { time: 'Just now', action: 'Database sync verified (0 corruption glitches detected)', status: 'Verified' },
-                { time: '10 mins ago', action: 'Optimized Treatment Plan for Patient P-001 (Pembrolizumab)', status: 'Success' },
-                { time: '25 mins ago', action: 'Admin logged in: napagunasaisujith@gmail.com', status: 'Authenticated' },
-                { time: '1 hour ago', action: 'Synchronized Neon PostgreSQL database tables', status: 'Connected' }
+                { time: 'Just now', action: 'Doctor directory verified with 0 duplicate entries', status: 'Clean' },
+                { time: '5 mins ago', action: 'Admin revoked access for doctor and synchronized permissions', status: 'Updated' },
+                { time: '15 mins ago', action: 'Optimized Treatment Plan for Patient P-001 (Pembrolizumab)', status: 'Success' },
+                { time: '30 mins ago', action: 'Admin logged in: napagunasaisujith@gmail.com', status: 'Authenticated' }
               ].map((log, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-xl text-xs">
                   <div>

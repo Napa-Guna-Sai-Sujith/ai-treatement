@@ -13,7 +13,7 @@ export interface UserRecord {
   hospital?: string;
 }
 
-const STORAGE_KEY = 'quantum_registered_users_v4';
+const STORAGE_KEY = 'quantum_registered_users_v5';
 
 export const INITIAL_VERIFIED_DOCTORS: UserRecord[] = [
   {
@@ -54,12 +54,50 @@ export const INITIAL_VERIFIED_DOCTORS: UserRecord[] = [
   }
 ];
 
-// Clean legacy keys once to prevent old ghost duplicates from resurfacing
-function purgeLegacyStorage() {
+// Helper to remove any duplicate objects by docId
+function deduplicateList(users: UserRecord[]): UserRecord[] {
+  const map = new Map<string, UserRecord>();
+
+  for (const u of users) {
+    if (!u || !u.docId || !u.name) continue;
+    const key = u.docId.trim().toUpperCase();
+
+    if (!map.has(key)) {
+      map.set(key, {
+        ...u,
+        docId: key,
+        email: u.email.trim().toLowerCase(),
+        isApproved: Boolean(u.isApproved)
+      });
+    } else {
+      // If duplicate exists, keep whichever record has explicit approval or latest updates
+      const existing = map.get(key)!;
+      map.set(key, {
+        ...existing,
+        ...u,
+        id: existing.id,
+        docId: key,
+        email: u.email.trim().toLowerCase(),
+        isApproved: u.isApproved !== undefined ? u.isApproved : existing.isApproved
+      });
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+// Clean old corrupted keys once
+function purgeOldKeys() {
   try {
-    localStorage.removeItem('quantum_registered_users');
-    localStorage.removeItem('quantum_registered_users_v2');
-    localStorage.removeItem('quantum_registered_users_v3');
+    const oldKeys = [
+      'quantum_registered_users',
+      'quantum_registered_users_v2',
+      'quantum_registered_users_v3',
+      'quantum_registered_users_v4'
+    ];
+    for (const k of oldKeys) {
+      localStorage.removeItem(k);
+    }
   } catch {
     // ignore
   }
@@ -67,9 +105,10 @@ function purgeLegacyStorage() {
 
 export function getRegisteredUsers(): UserRecord[] {
   try {
+    purgeOldKeys();
     const raw = localStorage.getItem(STORAGE_KEY);
+
     if (!raw) {
-      purgeLegacyStorage();
       saveUsersToStorage(INITIAL_VERIFIED_DOCTORS);
       return INITIAL_VERIFIED_DOCTORS;
     }
@@ -80,47 +119,38 @@ export function getRegisteredUsers(): UserRecord[] {
       return INITIAL_VERIFIED_DOCTORS;
     }
 
-    // Strict deduplication by Doc ID and Email
-    const seenDocIds = new Set<string>();
-    const seenEmails = new Set<string>();
-    const cleanList: UserRecord[] = [];
+    // Merge baseline doctors with stored users
+    // First, map baseline doctors
+    const map = new Map<string, UserRecord>();
+    for (const doc of INITIAL_VERIFIED_DOCTORS) {
+      map.set(doc.docId.toUpperCase(), { ...doc });
+    }
 
+    // Then update with stored user data (preserves approval toggles and edits)
     for (const u of parsed) {
-      if (!u || typeof u !== 'object') continue;
-      if (!u.name || !u.email || !u.docId) continue;
+      if (!u || !u.docId || !u.name) continue;
+      const key = String(u.docId).trim().toUpperCase();
+      const cleanEmail = String(u.email || '').trim().toLowerCase();
+      if (cleanEmail && !cleanEmail.includes('@')) continue;
 
-      const cleanDocId = String(u.docId).trim().toUpperCase();
-      const cleanEmail = String(u.email).trim().toLowerCase();
-
-      if (!cleanEmail.includes('@') || cleanDocId.length < 3) continue;
-
-      // Skip if this docId or email was already added (prevent duplicates)
-      if (seenDocIds.has(cleanDocId) || seenEmails.has(cleanEmail)) continue;
-
-      seenDocIds.add(cleanDocId);
-      seenEmails.add(cleanEmail);
-
-      cleanList.push({
+      const userObj: UserRecord = {
         id: Number(u.id) || Date.now() + Math.floor(Math.random() * 1000),
         name: String(u.name).trim(),
         email: cleanEmail,
-        docId: cleanDocId,
+        docId: key,
         role: u.role || 'Medical Oncologist',
-        licenseNumber: u.licenseNumber || `LIC-${cleanDocId}`,
+        licenseNumber: u.licenseNumber || `LIC-${key}`,
         isApproved: Boolean(u.isApproved),
         password: u.password || '123456',
         submittedAt: u.submittedAt || 'Active Registration',
         hospital: u.hospital || 'Precision Cancer Center'
-      });
+      };
+
+      map.set(key, userObj);
     }
 
-    // Ensure baseline doctors are always available if not explicitly removed
-    if (cleanList.length === 0) {
-      saveUsersToStorage(INITIAL_VERIFIED_DOCTORS);
-      return INITIAL_VERIFIED_DOCTORS;
-    }
-
-    saveUsersToStorage(cleanList);
+    const cleanList = Array.from(map.values());
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
     return cleanList;
   } catch (e) {
     console.error('Failed to get registered users:', e);
@@ -130,22 +160,8 @@ export function getRegisteredUsers(): UserRecord[] {
 
 export function saveUsersToStorage(users: UserRecord[]): void {
   try {
-    // Deduplicate one more time before saving to be 100% airtight
-    const seenDocIds = new Set<string>();
-    const seenEmails = new Set<string>();
-    const deduped: UserRecord[] = [];
-
-    for (const u of users) {
-      const docKey = u.docId.toUpperCase();
-      const emailKey = u.email.toLowerCase();
-      if (!seenDocIds.has(docKey) && !seenEmails.has(emailKey)) {
-        seenDocIds.add(docKey);
-        seenEmails.add(emailKey);
-        deduped.push(u);
-      }
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped));
+    const clean = deduplicateList(users);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
   } catch (e) {
     console.error('Failed to save users to storage:', e);
   }
@@ -165,40 +181,40 @@ export function saveNewUserRegistration(user: Omit<UserRecord, 'id'>): UserRecor
     submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
 
-  // Remove any previous conflicting entry with same docId or email
-  const filtered = current.filter(u => 
-    u.docId.toUpperCase() !== cleanDocId && 
-    u.email.toLowerCase() !== cleanEmail
-  );
+  // Replace any existing user with same Doc ID
+  const map = new Map<string, UserRecord>();
+  for (const u of current) {
+    map.set(u.docId.toUpperCase(), u);
+  }
+  map.set(cleanDocId, newUser);
 
-  const updated = [newUser, ...filtered];
+  const updated = Array.from(map.values());
   saveUsersToStorage(updated);
   return updated;
 }
 
-export function updateUserApprovalStatus(userIdOrDocIdOrEmail: string | number, isApproved: boolean): UserRecord[] {
+export function updateUserApprovalStatus(docIdOrId: string | number, isApproved: boolean): UserRecord[] {
   const current = getRegisteredUsers();
-  const searchStr = String(userIdOrDocIdOrEmail).trim().toLowerCase();
+  const searchStr = String(docIdOrId).trim().toUpperCase();
 
   const updated = current.map(u => {
-    if (
-      String(u.id) === searchStr ||
-      u.docId.toLowerCase() === searchStr ||
-      u.email.toLowerCase() === searchStr
-    ) {
+    if (u.docId.toUpperCase() === searchStr || String(u.id) === searchStr) {
       return { ...u, isApproved };
     }
     return u;
   });
 
-  saveUsersToStorage(updated);
-  return updated;
+  const clean = deduplicateList(updated);
+  saveUsersToStorage(clean);
+  return clean;
 }
 
-export function updateUserDetails(userId: number, details: Partial<UserRecord>): UserRecord[] {
+export function updateUserDetails(docIdOrId: string | number, details: Partial<UserRecord>): UserRecord[] {
   const current = getRegisteredUsers();
+  const searchStr = String(docIdOrId).trim().toUpperCase();
+
   const updated = current.map(u => {
-    if (u.id === userId) {
+    if (u.docId.toUpperCase() === searchStr || String(u.id) === searchStr) {
       return {
         ...u,
         ...details,
@@ -209,51 +225,47 @@ export function updateUserDetails(userId: number, details: Partial<UserRecord>):
     return u;
   });
 
+  const clean = deduplicateList(updated);
+  saveUsersToStorage(clean);
+  return clean;
+}
+
+export function deleteUserAccount(docIdOrId: string | number): UserRecord[] {
+  const current = getRegisteredUsers();
+  const searchStr = String(docIdOrId).trim().toUpperCase();
+
+  const updated = current.filter(u => 
+    u.docId.toUpperCase() !== searchStr && 
+    String(u.id) !== searchStr
+  );
+
   saveUsersToStorage(updated);
   return updated;
 }
 
-export function deleteUserAccount(userId: number): UserRecord[] {
-  const current = getRegisteredUsers();
-  const updated = current.filter(u => u.id !== userId);
-  saveUsersToStorage(updated);
-  return updated;
+export function resetToInitialVerifiedDoctors(): UserRecord[] {
+  purgeOldKeys();
+  saveUsersToStorage(INITIAL_VERIFIED_DOCTORS);
+  return INITIAL_VERIFIED_DOCTORS;
 }
 
 export function verifyAndPurgeInvalidAccounts(): { purgedCount: number; cleanList: UserRecord[] } {
-  purgeLegacyStorage();
+  purgeOldKeys();
   const current = getRegisteredUsers();
-  const seenDocIds = new Set<string>();
-  const seenEmails = new Set<string>();
-  const validList: UserRecord[] = [];
-  let purgedCount = 0;
+  const initialLength = current.length;
+  const cleanList = deduplicateList(current);
 
-  for (const u of current) {
-    if (!u.name || !u.email || !u.docId) {
-      purgedCount++;
-      continue;
-    }
-
-    const docKey = u.docId.toUpperCase();
-    const emailKey = u.email.toLowerCase();
-
-    if (seenDocIds.has(docKey) || seenEmails.has(emailKey)) {
-      purgedCount++;
-      continue;
-    }
-
-    seenDocIds.add(docKey);
-    seenEmails.add(emailKey);
-    validList.push(u);
+  // Ensure default 3 doctors are always present
+  const map = new Map<string, UserRecord>();
+  for (const d of INITIAL_VERIFIED_DOCTORS) {
+    map.set(d.docId.toUpperCase(), d);
+  }
+  for (const c of cleanList) {
+    map.set(c.docId.toUpperCase(), c);
   }
 
-  // Ensure initial doctors exist
-  for (const defaultDoc of INITIAL_VERIFIED_DOCTORS) {
-    if (!validList.some(u => u.docId.toUpperCase() === defaultDoc.docId.toUpperCase())) {
-      validList.push(defaultDoc);
-    }
-  }
-
-  saveUsersToStorage(validList);
-  return { purgedCount, cleanList: validList };
+  const final = Array.from(map.values());
+  saveUsersToStorage(final);
+  const purgedCount = Math.max(0, initialLength - final.length);
+  return { purgedCount, cleanList: final };
 }
