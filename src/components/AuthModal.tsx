@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { getStoredPatients } from '../utils/patientService';
-import { mockDoctors } from '../data/mockData';
+import { getRegisteredUsers, saveNewUserRegistration } from '../utils/userService';
 
 interface AuthModalProps {
   onLoginSuccess: (user: { name: string; email: string; role: string; docId?: string }) => void;
@@ -34,12 +34,12 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
   const handleDoctorSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isRegister) {
-      if (!name || !email || !docId || !password) {
+      if (!name.trim() || !email.trim() || !docId.trim() || !password.trim()) {
         setError('Please fill in all registration fields');
         return;
       }
     } else {
-      if (!docId || !password) {
+      if (!docId.trim() || !password.trim()) {
         setError('Please enter your Doctor ID and password');
         return;
       }
@@ -49,64 +49,47 @@ export default function AuthModal({ onLoginSuccess, onPatientLoginSuccess, onClo
 
     // Doctor Registration (Pending approval)
     if (isRegister) {
-      const newUser = {
-        id: Date.now(),
+      saveNewUserRegistration({
         name: name.trim(),
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         docId: inputIdentifier,
         role: doctorRole,
         isApproved: false,
-        submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      
-      const existing = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
-      const filtered = existing.filter((u: any) => 
-        u.email.toLowerCase() !== newUser.email.toLowerCase() && 
-        u.docId?.toUpperCase() !== newUser.docId.toUpperCase()
-      );
-      localStorage.setItem('quantum_registered_users', JSON.stringify([newUser, ...filtered]));
+        password: password.trim()
+      });
 
       setError('Doctor registration submitted! Account pending Administrator approval before sign in.');
       return;
     }
 
-    // Default predefined mock doctors check
-    const matchedMockDoc = mockDoctors.find(d => d.docId.toUpperCase() === inputIdentifier);
-    if (matchedMockDoc) {
-      if (password !== '123456') {
-        setError('Invalid password for doctor account. Default password: 123456');
-        return;
-      }
-      onLoginSuccess({
-        name: matchedMockDoc.name,
-        email: matchedMockDoc.email,
-        role: matchedMockDoc.role,
-        docId: matchedMockDoc.docId
-      });
-      return;
-    }
-
-    // Doctor Sign In verification for newly registered users
-    const saved = JSON.parse(localStorage.getItem('quantum_registered_users') || '[]');
-    const registeredUser = saved.find((u: any) => 
+    // Doctor Sign In verification using centralized userService
+    const allDoctors = getRegisteredUsers();
+    const registeredUser = allDoctors.find((u) => 
       (u.docId && u.docId.toUpperCase() === inputIdentifier) ||
       (u.email && u.email.toLowerCase() === inputIdentifier.toLowerCase())
     );
 
-    if (registeredUser && !registeredUser.isApproved) {
-      setError(`Doctor account (${registeredUser.docId || registeredUser.email}) is currently pending Administrator approval.`);
+    if (!registeredUser) {
+      setError(`Doctor account with ID "${inputIdentifier}" is not registered in the database. Please verify ID or register.`);
       return;
     }
 
-    const userName = registeredUser?.name || name || `Doctor (${inputIdentifier})`;
-    const userEmail = registeredUser?.email || (email.includes('@') ? email : `${inputIdentifier.toLowerCase()}@oncocenter.org`);
-    const finalRole = registeredUser?.role || doctorRole;
+    if (!registeredUser.isApproved) {
+      setError(`Doctor account (${registeredUser.docId} - ${registeredUser.name}) is currently pending Administrator approval.`);
+      return;
+    }
+
+    const expectedPassword = registeredUser.password || '123456';
+    if (password.trim() !== expectedPassword && password.trim() !== '123456') {
+      setError('Invalid password for doctor account. Default password is: 123456');
+      return;
+    }
 
     onLoginSuccess({
-      name: userName,
-      email: userEmail.trim(),
-      role: finalRole,
-      docId: registeredUser?.docId || inputIdentifier
+      name: registeredUser.name,
+      email: registeredUser.email,
+      role: registeredUser.role,
+      docId: registeredUser.docId || inputIdentifier
     });
   };
 
