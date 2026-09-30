@@ -5,7 +5,7 @@ export interface UserRecord {
   name: string;
   email: string;
   role: string;
-  docId?: string;
+  docId: string;
   licenseNumber?: string;
   isApproved: boolean;
   password?: string;
@@ -13,8 +13,7 @@ export interface UserRecord {
   hospital?: string;
 }
 
-const STORAGE_KEY = 'quantum_registered_users_v3';
-const LEGACY_STORAGE_KEY = 'quantum_registered_users';
+const STORAGE_KEY = 'quantum_registered_users_v4';
 
 export const INITIAL_VERIFIED_DOCTORS: UserRecord[] = [
   {
@@ -55,72 +54,74 @@ export const INITIAL_VERIFIED_DOCTORS: UserRecord[] = [
   }
 ];
 
+// Clean legacy keys once to prevent old ghost duplicates from resurfacing
+function purgeLegacyStorage() {
+  try {
+    localStorage.removeItem('quantum_registered_users');
+    localStorage.removeItem('quantum_registered_users_v2');
+    localStorage.removeItem('quantum_registered_users_v3');
+  } catch {
+    // ignore
+  }
+}
+
 export function getRegisteredUsers(): UserRecord[] {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY);
-    
-    // Check legacy storage migration if v3 is empty
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (legacyRaw) {
-        try {
-          const legacyParsed = JSON.parse(legacyRaw);
-          if (Array.isArray(legacyParsed) && legacyParsed.length > 0) {
-            raw = legacyRaw;
-          }
-        } catch {
-          // ignore
-        }
-      }
+      purgeLegacyStorage();
+      saveUsersToStorage(INITIAL_VERIFIED_DOCTORS);
+      return INITIAL_VERIFIED_DOCTORS;
     }
 
-    let parsed: any[] = [];
-    if (raw) {
-      parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      saveUsersToStorage(INITIAL_VERIFIED_DOCTORS);
+      return INITIAL_VERIFIED_DOCTORS;
     }
 
-    // Merge baseline doctors with stored users, deduplicating by Doc ID and Email
-    const validUsersMap = new Map<string, UserRecord>();
+    // Strict deduplication by Doc ID and Email
+    const seenDocIds = new Set<string>();
+    const seenEmails = new Set<string>();
+    const cleanList: UserRecord[] = [];
 
-    // First insert initial verified doctors
-    for (const doc of INITIAL_VERIFIED_DOCTORS) {
-      validUsersMap.set(doc.docId!.toUpperCase(), doc);
-      validUsersMap.set(doc.email.toLowerCase(), doc);
+    for (const u of parsed) {
+      if (!u || typeof u !== 'object') continue;
+      if (!u.name || !u.email || !u.docId) continue;
+
+      const cleanDocId = String(u.docId).trim().toUpperCase();
+      const cleanEmail = String(u.email).trim().toLowerCase();
+
+      if (!cleanEmail.includes('@') || cleanDocId.length < 3) continue;
+
+      // Skip if this docId or email was already added (prevent duplicates)
+      if (seenDocIds.has(cleanDocId) || seenEmails.has(cleanEmail)) continue;
+
+      seenDocIds.add(cleanDocId);
+      seenEmails.add(cleanEmail);
+
+      cleanList.push({
+        id: Number(u.id) || Date.now() + Math.floor(Math.random() * 1000),
+        name: String(u.name).trim(),
+        email: cleanEmail,
+        docId: cleanDocId,
+        role: u.role || 'Medical Oncologist',
+        licenseNumber: u.licenseNumber || `LIC-${cleanDocId}`,
+        isApproved: Boolean(u.isApproved),
+        password: u.password || '123456',
+        submittedAt: u.submittedAt || 'Active Registration',
+        hospital: u.hospital || 'Precision Cancer Center'
+      });
     }
 
-    // Then merge parsed users if they have valid fields
-    if (Array.isArray(parsed)) {
-      for (const u of parsed) {
-        if (!u || typeof u !== 'object') continue;
-        if (!u.name || !u.email || !u.docId) continue; // Purge corrupted/empty entries
-        
-        const cleanDocId = String(u.docId).trim().toUpperCase();
-        const cleanEmail = String(u.email).trim().toLowerCase();
-        
-        // Skip invalid placeholders or malformed emails
-        if (!cleanEmail.includes('@') || cleanDocId.length < 3) continue;
-
-        const normalized: UserRecord = {
-          id: Number(u.id) || Date.now() + Math.floor(Math.random() * 1000),
-          name: String(u.name).trim(),
-          email: cleanEmail,
-          docId: cleanDocId,
-          role: u.role || 'Medical Oncologist',
-          licenseNumber: u.licenseNumber || `LIC-${cleanDocId}`,
-          isApproved: Boolean(u.isApproved),
-          password: u.password || '123456',
-          submittedAt: u.submittedAt || 'Active Registration',
-          hospital: u.hospital || 'Precision Cancer Center'
-        };
-
-        // If it overrides initial doctors (e.g. status updated), update
-        validUsersMap.set(cleanDocId, normalized);
-      }
+    // Ensure baseline doctors are always available if not explicitly removed
+    if (cleanList.length === 0) {
+      saveUsersToStorage(INITIAL_VERIFIED_DOCTORS);
+      return INITIAL_VERIFIED_DOCTORS;
     }
 
-    const result = Array.from(new Set(validUsersMap.values()));
-    saveUsersToStorage(result);
-    return result;
+    saveUsersToStorage(cleanList);
+    return cleanList;
   } catch (e) {
     console.error('Failed to get registered users:', e);
     return INITIAL_VERIFIED_DOCTORS;
@@ -129,9 +130,22 @@ export function getRegisteredUsers(): UserRecord[] {
 
 export function saveUsersToStorage(users: UserRecord[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-    // Keep legacy in sync for compatibility
-    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(users));
+    // Deduplicate one more time before saving to be 100% airtight
+    const seenDocIds = new Set<string>();
+    const seenEmails = new Set<string>();
+    const deduped: UserRecord[] = [];
+
+    for (const u of users) {
+      const docKey = u.docId.toUpperCase();
+      const emailKey = u.email.toLowerCase();
+      if (!seenDocIds.has(docKey) && !seenEmails.has(emailKey)) {
+        seenDocIds.add(docKey);
+        seenEmails.add(emailKey);
+        deduped.push(u);
+      }
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped));
   } catch (e) {
     console.error('Failed to save users to storage:', e);
   }
@@ -151,8 +165,9 @@ export function saveNewUserRegistration(user: Omit<UserRecord, 'id'>): UserRecor
     submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
 
+  // Remove any previous conflicting entry with same docId or email
   const filtered = current.filter(u => 
-    u.docId?.toUpperCase() !== cleanDocId && 
+    u.docId.toUpperCase() !== cleanDocId && 
     u.email.toLowerCase() !== cleanEmail
   );
 
@@ -168,7 +183,7 @@ export function updateUserApprovalStatus(userIdOrDocIdOrEmail: string | number, 
   const updated = current.map(u => {
     if (
       String(u.id) === searchStr ||
-      (u.docId && u.docId.toLowerCase() === searchStr) ||
+      u.docId.toLowerCase() === searchStr ||
       u.email.toLowerCase() === searchStr
     ) {
       return { ...u, isApproved };
@@ -184,7 +199,12 @@ export function updateUserDetails(userId: number, details: Partial<UserRecord>):
   const current = getRegisteredUsers();
   const updated = current.map(u => {
     if (u.id === userId) {
-      return { ...u, ...details };
+      return {
+        ...u,
+        ...details,
+        docId: details.docId ? details.docId.trim().toUpperCase() : u.docId,
+        email: details.email ? details.email.trim().toLowerCase() : u.email
+      };
     }
     return u;
   });
@@ -201,6 +221,7 @@ export function deleteUserAccount(userId: number): UserRecord[] {
 }
 
 export function verifyAndPurgeInvalidAccounts(): { purgedCount: number; cleanList: UserRecord[] } {
+  purgeLegacyStorage();
   const current = getRegisteredUsers();
   const seenDocIds = new Set<string>();
   const seenEmails = new Set<string>();
@@ -226,9 +247,9 @@ export function verifyAndPurgeInvalidAccounts(): { purgedCount: number; cleanLis
     validList.push(u);
   }
 
-  // Ensure default doctors are always present
+  // Ensure initial doctors exist
   for (const defaultDoc of INITIAL_VERIFIED_DOCTORS) {
-    if (!validList.some(u => u.docId?.toUpperCase() === defaultDoc.docId?.toUpperCase())) {
+    if (!validList.some(u => u.docId.toUpperCase() === defaultDoc.docId.toUpperCase())) {
       validList.push(defaultDoc);
     }
   }
